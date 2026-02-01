@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function LoadingBar() {
+    return (
+        <Suspense fallback={null}>
+            <LoadingBarContent />
+        </Suspense>
+    );
+}
+
+function LoadingBarContent() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
