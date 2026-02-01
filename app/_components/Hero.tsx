@@ -3,10 +3,29 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function Hero() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#")) {
+      e.preventDefault();
+      const elementId = href.replace("/#", "");
+      if (pathname === "/") {
+        const element = document.getElementById(elementId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      } else {
+        router.push(`/?target=${elementId}`);
+      }
+    }
+  };
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
+    <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
       {/* Background Decor */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-teal-500/20 rounded-full blur-[100px] animate-float" />
@@ -39,6 +58,7 @@ export default function Hero() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/#shop"
+              onClick={(e) => handleScroll(e, "/#shop")}
               className="w-full sm:w-auto px-8 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-full font-semibold transition-all shadow-lg hover:shadow-teal-500/30 flex items-center justify-center gap-2 group"
             >
               Shop Now
@@ -47,6 +67,7 @@ export default function Hero() {
 
             <Link
               href="/#what"
+              onClick={(e) => handleScroll(e, "/#what")}
               className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 rounded-full font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center"
             >
               Explore Tools
