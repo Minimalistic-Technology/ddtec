@@ -3,14 +3,49 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Send, MessageSquare } from "lucide-react";
+import { useAuth } from "../_context/AuthContext";
 
 const Contact: React.FC = () => {
-    const [formState, setFormState] = useState<"idle" | "submitting" | "success">("idle");
+    const { user } = useAuth();
+    const [formState, setFormState] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        const form = e.currentTarget;
         setFormState("submitting");
-        setTimeout(() => setFormState("success"), 1500);
+
+        const formData = new FormData(form);
+        const data = {
+            firstName: formData.get("firstName"),
+            lastName: formData.get("lastName"),
+            email: formData.get("email"),
+            message: formData.get("message"),
+        };
+
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
+        try {
+            const response = await fetch(`${backendUrl}/contact`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ...data,
+                    userId: user?.id
+                }),
+            });
+
+            if (response.ok) {
+                setFormState("success");
+                form.reset();
+                setTimeout(() => setFormState("idle"), 3000);
+            } else {
+                setFormState("error");
+                setTimeout(() => setFormState("idle"), 3000);
+            }
+        } catch (error) {
+            setFormState("error");
+            setTimeout(() => setFormState("idle"), 3000);
+        }
     };
 
     return (
@@ -105,8 +140,10 @@ const Contact: React.FC = () => {
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">First Name</label>
                                         <input
                                             required
+                                            name="firstName"
                                             type="text"
                                             className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                                            defaultValue={user?.name ? user.name.split(" ")[0] : ""}
                                             placeholder="John"
                                         />
                                     </div>
@@ -114,6 +151,7 @@ const Contact: React.FC = () => {
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Last Name</label>
                                         <input
                                             required
+                                            name="lastName"
                                             type="text"
                                             className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
                                             placeholder="Doe"
@@ -125,8 +163,11 @@ const Contact: React.FC = () => {
                                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Email Address</label>
                                     <input
                                         required
+                                        name="email"
                                         type="email"
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                                        defaultValue={user?.email || ""}
+                                        readOnly={!!user?.email}
+                                        className={`w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${user?.email ? "bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-slate-50 dark:bg-slate-900"}`}
                                         placeholder="john@company.com"
                                     />
                                 </div>
@@ -135,6 +176,7 @@ const Contact: React.FC = () => {
                                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Message</label>
                                     <textarea
                                         required
+                                        name="message"
                                         rows={4}
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all resize-none"
                                         placeholder="Tell us about your requirements..."
@@ -152,6 +194,9 @@ const Contact: React.FC = () => {
                                     {formState === "submitting" && "Sending..."}
                                     {formState === "success" && (
                                         <>Message Sent! <MessageSquare className="size-5" /></>
+                                    )}
+                                    {formState === "error" && (
+                                        <>Failed. Try Again.</>
                                     )}
                                 </button>
                             </form>

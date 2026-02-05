@@ -5,12 +5,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
-import { Menu, X, Sun, Moon, ShoppingBag, ChevronRight } from "lucide-react";
+import { Menu, X, Sun, Moon, ShoppingBag, ChevronRight, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LoadingBar from "./LoadingBar";
+import { useAuth } from "../_context/AuthContext";
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -258,6 +260,43 @@ export default function Navbar() {
               </button>
             )}
 
+            {mounted && (
+              user ? (
+                <div className="hidden md:flex items-center gap-4">
+                  <span className={cn(
+                    "font-medium",
+                    scrolled ? "text-slate-700 dark:text-slate-200" : "text-slate-700 dark:text-slate-200"
+                  )}>
+                    Hi, {user.name.split(' ')[0]}
+                  </span>
+                  <button
+                    onClick={logout}
+                    title="Logout"
+                    className={cn(
+                      "p-2 rounded-full transition-colors font-medium items-center gap-2 flex",
+                      scrolled
+                        ? "hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-700 dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10"
+                    )}
+                  >
+                    <LogOut className="size-5" />
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className={cn(
+                    "hidden md:flex px-4 py-2 rounded-full text-sm font-bold transition-all items-center gap-2",
+                    scrolled
+                      ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                      : "bg-white text-slate-900 hover:bg-slate-100 shadow-lg"
+                  )}
+                >
+                  <User className="size-4" /> Login
+                </Link>
+              )
+            )}
+
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
@@ -316,6 +355,25 @@ export default function Navbar() {
                     <ChevronRight className="size-4 opacity-50" />
                   </Link>
                 ))}
+              </div>
+
+              <div className="p-4 border-t dark:border-slate-800">
+                {user ? (
+                  <button
+                    onClick={() => { logout(); setMenuOpen(false); }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-semibold"
+                  >
+                    <LogOut className="size-5" /> Logout
+                  </button>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 text-white rounded-xl font-semibold"
+                  >
+                    <User className="size-5" /> Login / Signup
+                  </Link>
+                )}
               </div>
 
               <div className="mt-auto p-5 border-t dark:border-slate-800">

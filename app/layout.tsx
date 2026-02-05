@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import { ThemeProvider } from "./provider/theme-provider";
 import Navbar from "./_components/Navbar";
 import Footer from "./_components/Footer";
+import { AuthProvider } from "./_context/AuthContext";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -19,14 +20,16 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${poppins.variable} min-h-screen flex flex-col font-poppins`}>
         <ThemeProvider>
-          <Navbar />
+          <AuthProvider>
+            <Navbar />
 
-          {/* Main content grows to push footer down */}
-          <main className="min-h-screen flex-1">
-            {children}
-          </main>
+            {/* Main content grows to push footer down */}
+            <main className="min-h-screen flex-1">
+              {children}
+            </main>
 
-          <Footer />
+            <Footer />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
