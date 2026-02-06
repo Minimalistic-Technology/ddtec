@@ -10,16 +10,18 @@ export default function Hero() {
   const pathname = usePathname();
 
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href.startsWith("/#")) {
+    const sectionPaths = ["/shop", "/who", "/what", "/contact"];
+    if (sectionPaths.includes(href)) {
       e.preventDefault();
-      const elementId = href.replace("/#", "");
+      const sectionId = href.substring(1);
       if (pathname === "/") {
-        const element = document.getElementById(elementId);
+        const element = document.getElementById(sectionId);
         if (element) {
           element.scrollIntoView({ behavior: "smooth" });
         }
       } else {
-        router.push(`/?target=${elementId}`);
+        sessionStorage.setItem("scroll-target", sectionId);
+        router.push("/");
       }
     }
   };
@@ -57,8 +59,8 @@ export default function Hero() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/#shop"
-              onClick={(e) => handleScroll(e, "/#shop")}
+              href="/shop"
+              onClick={(e) => handleScroll(e, "/shop")}
               className="w-full sm:w-auto px-8 py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-full font-semibold transition-all shadow-lg hover:shadow-teal-500/30 flex items-center justify-center gap-2 group"
             >
               Shop Now
@@ -66,8 +68,8 @@ export default function Hero() {
             </Link>
 
             <Link
-              href="/#what"
-              onClick={(e) => handleScroll(e, "/#what")}
+              href="/what"
+              onClick={(e) => handleScroll(e, "/what")}
               className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 rounded-full font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center"
             >
               Explore Tools

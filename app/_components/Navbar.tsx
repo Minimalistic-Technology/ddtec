@@ -9,10 +9,12 @@ import { Menu, X, Sun, Moon, ShoppingBag, ChevronRight, User, LogOut } from "luc
 import { cn } from "@/lib/utils";
 import LoadingBar from "./LoadingBar";
 import { useAuth } from "../_context/AuthContext";
+import { useCart } from "../_context/CartContext";
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { cartCount } = useCart(); // Cart Context Hook
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -30,7 +32,6 @@ export default function Navbar() {
 
   useEffect(() => {
     setMounted(true);
-    // Set initial hash if present in URL
     if (window.location.hash) {
       setCurrentHash(window.location.hash.substring(1));
     }
@@ -45,21 +46,15 @@ export default function Navbar() {
   useEffect(() => {
     if (pathname !== "/") return;
 
-    const sections = ["home", "who", "what", "contact"];
-
-    // Create an intersection observer
+    const sections = ["home", "who", "what", "shop", "contact"];
     const observer = new IntersectionObserver((entries) => {
-      // Find the entry that is intersecting most
       const visibleSection = entries.find(entry => entry.isIntersecting);
-
       if (visibleSection) {
-        // Map 'home' back to empty string for consistent state
         const newHash = visibleSection.target.id === "home" ? "" : visibleSection.target.id;
-        // Avoid setting state if it hasn't changed to prevent unnecessary re-renders
         setCurrentHash(prev => prev === newHash ? prev : newHash);
       }
     }, {
-      rootMargin: "-20% 0px -50% 0px", // Trigger when section is in the middle viewport area
+      rootMargin: "-20% 0px -50% 0px",
       threshold: 0.1
     });
 
@@ -73,18 +68,14 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Who we are", href: "/#who" },
-    { name: "What we offer", href: "/#what" },
-    { name: "Contact", href: "/#contact" },
+    { name: "Shop", href: "/shop" },
+    { name: "Who we are", href: "/who" },
+    { name: "What we offer", href: "/what" },
+    { name: "Contact", href: "/contact" },
+    ...(user && user.role === 'admin' ? [{ name: "Dashboard", href: "/admin" }] : [])
   ];
 
-  /* 
-   * Handles navigation to specific sections without adding #hash to URL.
-   * If on home page: directly scrolls.
-   * If on other page: sets storage flag and navigates home, where effect picks it up.
-   */
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-
     if (href === "/") {
       e.preventDefault();
       setCurrentHash("");
@@ -97,37 +88,35 @@ export default function Navbar() {
       return;
     }
 
-    if (href.startsWith("/#")) {
+    // List of clean paths that should scroll on home page
+    const sectionPaths = ["/shop", "/who", "/what", "/contact"];
+    const sectionId = href.startsWith("/") ? href.substring(1) : href;
+
+    if (sectionPaths.includes(href)) {
       e.preventDefault();
-      const elementId = href.replace("/#", "");
-      setCurrentHash(elementId);
+      setCurrentHash(sectionId);
 
       if (pathname === "/") {
-        const element = document.getElementById(elementId);
+        const element = document.getElementById(sectionId);
         if (element) {
           element.scrollIntoView({ behavior: "smooth" });
         }
       } else {
-        // Store target for after navigation
-        sessionStorage.setItem("scroll-target", elementId);
+        sessionStorage.setItem("scroll-target", sectionId);
         router.push("/");
       }
     }
-    // For other links (like Contact), we don't prevent default, but we should clear hash
     else if (!href.startsWith("/#") && href !== "/") {
       setCurrentHash("");
     }
-
     setMenuOpen(false);
   };
 
-  // Check for stored scroll target on mount or pathname change
   useEffect(() => {
     if (pathname === "/") {
       const storedTarget = sessionStorage.getItem("scroll-target");
       if (storedTarget) {
         setCurrentHash(storedTarget);
-        // slight delay to ensure DOM is ready
         setTimeout(() => {
           const element = document.getElementById(storedTarget);
           if (element) {
@@ -136,18 +125,9 @@ export default function Navbar() {
           sessionStorage.removeItem("scroll-target");
         }, 100);
       } else {
-        // If no stored target, we might be at home (top) or at a hash from URL
-        // If we just clicked Back to Home, resetting currentHash might be correct if URL has no hash
         if (window.location.hash) {
           setCurrentHash(window.location.hash.substring(1));
         } else {
-          // Keep currentHash if it was set? No, because we might have come from Contact.
-          // But if we are just scrolling around... this effect runs on PATHNAME change.
-          // So only when navigating TO home.
-          // If I am on Home and click Who, pathname doesn't change, this effect doesn't run.
-          // So safe to reset here if no hash?
-          // If I refresh with no hash, this runs? Yes.
-          // If I refresh WITH hash, window.location.hash is set.
           if (!currentHash) setCurrentHash("");
         }
       }
@@ -160,14 +140,11 @@ export default function Navbar() {
     if (pathname !== "/") {
       return linkHref === pathname;
     }
-    // On Home Page
     if (linkHref === "/") {
       return currentHash === "";
     }
-    if (linkHref.startsWith("/#")) {
-      return currentHash === linkHref.replace("/#", "");
-    }
-    return false;
+    const id = linkHref.startsWith("/") ? linkHref.substring(1) : linkHref;
+    return currentHash === id;
   };
 
   return (
@@ -185,12 +162,10 @@ export default function Navbar() {
         )}
       >
         <nav className="container mx-auto px-4 md:px-6 h-16 flex items-center justify-between relative">
-          {/* Scroll Progress Bar - Attached to bottom of nav */}
           <motion.div
             className="absolute bottom-0 left-0 right-0 h-[2px] bg-teal-500 origin-left"
             style={{ scaleX }}
           />
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <div className="size-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-bold shadow-lg shadow-teal-500/20 group-hover:shadow-teal-500/40 transition-all">
               D
@@ -202,7 +177,6 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
               <Link
@@ -230,21 +204,31 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* Actions */}
+
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link
-              href="/#shop"
-              onClick={(e) => handleNavClick(e, "/#shop")}
-              className={cn(
-                "p-2 rounded-full transition-colors relative group",
-                scrolled
-                  ? "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-                  : "text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10"
-              )}
-            >
-              <ShoppingBag className="size-5" />
-              <span className="absolute top-1.5 right-1.5 size-2 bg-teal-500 rounded-full border-2 border-white dark:border-slate-900" />
-            </Link>
+            {(!user || user.role !== 'admin') && (
+              <Link
+                href="/cart"
+                onClick={(e) => {
+                  if (pathname === '/cart') e.preventDefault();
+                  router.push('/cart');
+                  setMenuOpen(false);
+                }}
+                className={cn(
+                  "p-2 rounded-full transition-colors relative group",
+                  scrolled
+                    ? "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                    : "text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10"
+                )}
+              >
+                <ShoppingBag className="size-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 size-5 bg-teal-500 rounded-full border-2 border-white dark:border-slate-900 text-[10px] flex items-center justify-center text-white font-bold">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {mounted && (
               <button
@@ -297,7 +281,6 @@ export default function Navbar() {
               )
             )}
 
-            {/* Mobile Menu Button */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className={cn(
@@ -313,7 +296,6 @@ export default function Navbar() {
         </nav>
       </motion.header>
 
-      {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {menuOpen && (
           <>

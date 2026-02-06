@@ -10,16 +10,17 @@ export default function Footer() {
   const pathname = usePathname();
 
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href.startsWith("/#")) {
+    const sectionPaths = ["/shop", "/who", "/what", "/contact"];
+    if (sectionPaths.includes(href)) {
       e.preventDefault();
-      const elementId = href.replace("/#", "");
+      const sectionId = href.substring(1);
       if (pathname === "/") {
-        const element = document.getElementById(elementId);
+        const element = document.getElementById(sectionId);
         if (element) {
           element.scrollIntoView({ behavior: "smooth" });
         }
       } else {
-        sessionStorage.setItem("scroll-target", elementId);
+        sessionStorage.setItem("scroll-target", sectionId);
         router.push("/");
       }
     }
@@ -53,10 +54,10 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold mb-6">Explore</h4>
             <ul className="space-y-4 text-sm">
-              <li><Link href="/#who" onClick={(e) => handleScroll(e, "/#who")} className="hover:text-teal-400 transition-colors">Who We Are</Link></li>
-              <li><Link href="/#what" onClick={(e) => handleScroll(e, "/#what")} className="hover:text-teal-400 transition-colors">What We Offer</Link></li>
-              <li><Link href="/#shop" onClick={(e) => handleScroll(e, "/#shop")} className="hover:text-teal-400 transition-colors">Shop Tools</Link></li>
-              <li><Link href="/contact" className="hover:text-teal-400 transition-colors">Contact Us</Link></li>
+              <li><Link href="/who" onClick={(e) => handleScroll(e, "/who")} className="hover:text-teal-400 transition-colors">Who We Are</Link></li>
+              <li><Link href="/what" onClick={(e) => handleScroll(e, "/what")} className="hover:text-teal-400 transition-colors">What We Offer</Link></li>
+              <li><Link href="/shop" onClick={(e) => handleScroll(e, "/shop")} className="hover:text-teal-400 transition-colors">Shop Tools</Link></li>
+              <li><Link href="/contact" onClick={(e) => handleScroll(e, "/contact")} className="hover:text-teal-400 transition-colors">Contact Us</Link></li>
             </ul>
           </div>
 

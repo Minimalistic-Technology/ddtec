@@ -7,6 +7,7 @@ interface User {
     id: string;
     name: string;
     email: string;
+    role: string;
 }
 
 interface AuthContextType {
@@ -23,7 +24,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5004';
+    // Use relative path '/api' to leverage Next.js proxy (avoids CORS/Cookie issues)
+    // The previous env logic is replaced because we now proxy /api -> localhost:5000
+    const backendUrl = '/api';
     const API_URL = `${backendUrl}/auth`;
 
     useEffect(() => {
@@ -63,9 +66,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             setUser(data.user);
-            // localStorage.setItem("ddtec_user", JSON.stringify(data.user)); // Removed
-            // localStorage.setItem("ddtec_token", data.token); // Removed
-            router.push("/");
+
+            if (data.user.role === 'admin') {
+                router.push("/admin");
+            } else {
+                router.push("/");
+            }
         } catch (error) {
             console.error("Login failed:", error);
             throw error;
@@ -87,9 +93,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             setUser(data.user);
-            // localStorage.setItem("ddtec_user", JSON.stringify(data.user)); // Removed
-            // localStorage.setItem("ddtec_token", data.token); // Removed
-            router.push("/");
+
+            if (data.user.role === 'admin') {
+                router.push("/admin");
+            } else {
+                router.push("/");
+            }
         } catch (error) {
             console.error("Signup failed:", error);
             throw error;
