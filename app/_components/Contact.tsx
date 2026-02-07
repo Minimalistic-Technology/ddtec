@@ -1,9 +1,11 @@
+
 "use client";
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Send, MessageSquare } from "lucide-react";
 import { useAuth } from "../_context/AuthContext";
+import axios from "axios";
 
 const Contact: React.FC = () => {
     const { user } = useAuth();
@@ -22,19 +24,13 @@ const Contact: React.FC = () => {
             message: formData.get("message"),
         };
 
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-
         try {
-            const response = await fetch(`${backendUrl}/contact`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...data,
-                    userId: user?.id
-                }),
+            const response = await axios.post('/api/contact', {
+                ...data,
+                userId: user?.id
             });
 
-            if (response.ok) {
+            if (response.status === 200 || response.status === 201) {
                 setFormState("success");
                 form.reset();
                 setTimeout(() => setFormState("idle"), 3000);

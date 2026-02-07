@@ -7,6 +7,7 @@ import { useAuth } from "../_context/AuthContext";
 import { useCart } from "../_context/CartContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import api from "@/lib/api";
 
 interface Product {
     _id: string;
@@ -51,8 +52,6 @@ export default function ShopSection() {
         modelName: ""
     });
 
-    // Use relative path to leverage Next.js proxy
-    const backendUrl = '/api';
 
     useEffect(() => {
         fetchProducts();
@@ -60,11 +59,8 @@ export default function ShopSection() {
 
     const fetchProducts = async () => {
         try {
-            const res = await fetch(`${backendUrl}/products`);
-            if (res.ok) {
-                const data = await res.json();
-                setProducts(data);
-            }
+            const res = await api.get('/products');
+            setProducts(res.data);
         } catch (error) {
             console.error("Failed to fetch products", error);
         } finally {
@@ -95,32 +91,24 @@ export default function ShopSection() {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const res = await fetch(`${backendUrl}/products`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...newProduct,
-                    price: Number(newProduct.price),
-                    stock: Number(newProduct.stock),
-                    rating: Number(newProduct.rating) || 0,
-                    lastMonthSales: Number(newProduct.lastMonthSales) || 0,
-                    brand: newProduct.brand,
-                    modelName: newProduct.modelName
-                }),
-                credentials: 'include'
+            const res = await api.post('/products', {
+                ...newProduct,
+                price: Number(newProduct.price),
+                stock: Number(newProduct.stock),
+                rating: Number(newProduct.rating) || 0,
+                lastMonthSales: Number(newProduct.lastMonthSales) || 0,
+                brand: newProduct.brand,
+                modelName: newProduct.modelName
             });
 
-            if (res.ok) {
+            if (res.status === 200 || res.status === 201) {
                 fetchProducts();
                 setIsModalOpen(false);
                 setNewProduct({ name: "", price: "", description: "", image: "", category: "", stock: "", rating: "", lastMonthSales: "", brand: "", modelName: "" });
-            } else {
-                console.error("Failed to add product");
-                const err = await res.json();
-                alert(`Error: ${err.msg || 'Failed to add product'}`);
             }
-        } catch (error) {
-            console.error("Error adding product", error);
+        } catch (error: any) {
+            console.error("Failed to add product", error);
+            alert(`Error: ${error.response?.data?.msg || 'Failed to add product'}`);
         } finally {
             setIsSubmitting(false);
         }
@@ -136,8 +124,8 @@ export default function ShopSection() {
             </div>
 
             <div className="relative z-10 w-full max-w-7xl mx-auto">
-                <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-12 gap-6">
-                    <div>
+                <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
+                    <div className="text-center md:text-left">
                         <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">Our Products</h2>
                         <p className="text-slate-600 dark:text-slate-400">Quality tools for professional results</p>
                     </div>

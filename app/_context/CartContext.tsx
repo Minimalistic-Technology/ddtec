@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import api from "@/lib/api";
 
 interface CartItem {
     product: {
@@ -34,7 +35,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { user } = useAuth();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(false);
-    const backendUrl = '/api'; // Use relative path via proxy
 
     // Fetch Cart on User Change
     useEffect(() => {
@@ -48,11 +48,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchCart = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${backendUrl}/cart`, { credentials: 'include' });
-            if (res.ok) {
-                const data = await res.json();
-                setCartItems(data.items || []);
-            }
+            const res = await api.get('/cart');
+            setCartItems(res.data.items || []);
         } catch (error) {
             console.error("Failed to fetch cart", error);
         } finally {
@@ -66,33 +63,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
         }
         try {
-            const res = await fetch(`${backendUrl}/cart/add`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId, quantity }),
-                credentials: 'include'
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setCartItems(data.items);
+            const res = await api.post('/cart/add', { productId, quantity });
+            if (res.status === 200 || res.status === 201) {
+                setCartItems(res.data.items);
                 alert("Item added to cart!");
-            } else {
-                alert("Failed to add to cart");
             }
         } catch (error) {
             console.error(error);
+            alert("Failed to add to cart");
         }
     };
 
     const removeFromCart = async (productId: string) => {
         try {
-            const res = await fetch(`${backendUrl}/cart/${productId}`, {
-                method: 'DELETE',
-                credentials: 'include'
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setCartItems(data.items);
+            const res = await api.delete(`/cart/${productId}`);
+            if (res.status === 200) {
+                setCartItems(res.data.items);
             }
         } catch (error) {
             console.error(error);
@@ -101,15 +87,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updateQuantity = async (productId: string, quantity: number) => {
         try {
-            const res = await fetch(`${backendUrl}/cart/update`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId, quantity }),
-                credentials: 'include'
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setCartItems(data.items);
+            const res = await api.put('/cart/update', { productId, quantity });
+            if (res.status === 200) {
+                setCartItems(res.data.items);
             }
         } catch (error) {
             console.error(error);

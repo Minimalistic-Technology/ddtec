@@ -5,6 +5,7 @@ import { useAuth } from "../_context/AuthContext";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Package, DollarSign, ShoppingBag, Loader2, Trash2, Edit, Plus, X, Tag, Image as ImageIcon, Layers } from "lucide-react";
+import api from "@/lib/api";
 
 interface DashboardStats {
     users: number;
@@ -70,9 +71,6 @@ const AdminDashboard = () => {
 
     const [editingProduct, setEditingProduct] = useState<any>(null);
 
-    // Use relative path to leverage Next.js proxy
-    const backendUrl = '/api';
-
     useEffect(() => {
         if (!authLoading) {
             if (!user) {
@@ -87,11 +85,8 @@ const AdminDashboard = () => {
 
     const fetchStats = async () => {
         try {
-            const res = await fetch(`${backendUrl}/admin/stats`);
-            if (res.ok) {
-                const data = await res.json();
-                setStats(data);
-            }
+            const res = await api.get('/admin/stats');
+            setStats(res.data);
         } catch (error) {
             console.error("Failed to fetch admin stats", error);
         } finally {
@@ -102,8 +97,8 @@ const AdminDashboard = () => {
     const fetchUsers = async () => {
         setLoadingData(true);
         try {
-            const res = await fetch(`${backendUrl}/admin/users`);
-            if (res.ok) setUsersList(await res.json());
+            const res = await api.get('/admin/users');
+            setUsersList(res.data);
         } catch (error) { console.error(error); }
         finally { setLoadingData(false); }
     };
@@ -111,21 +106,21 @@ const AdminDashboard = () => {
     const fetchProducts = async () => {
         setLoadingData(true);
         try {
-            const res = await fetch(`${backendUrl}/products`);
-            if (res.ok) setProductsList(await res.json());
+            const res = await api.get('/products');
+            setProductsList(res.data);
         } catch (error) { console.error(error); }
         finally { setLoadingData(false); }
     };
 
     const handleDeleteUser = async (id: string) => {
         if (!confirm("Are you sure?")) return;
-        await fetch(`${backendUrl}/admin/users/${id}`, { method: 'DELETE' });
+        await api.delete(`/admin/users/${id}`);
         fetchUsers();
     };
 
     const handleDeleteProduct = async (id: string) => {
         if (!confirm("Are you sure?")) return;
-        await fetch(`${backendUrl}/products/${id}`, { method: 'DELETE', headers: { 'x-auth-token': localStorage.getItem("token") || "" } });
+        await api.delete(`/products/${id}`);
         fetchProducts();
     };
 
@@ -133,39 +128,27 @@ const AdminDashboard = () => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const res = await fetch(`${backendUrl}/products`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-auth-token": localStorage.getItem("token") || ""
-                },
-                body: JSON.stringify({
-                    ...newProduct,
-                    price: Number(newProduct.price),
-                    stock: Number(newProduct.stock),
-                    rating: Number(newProduct.rating) || 0,
-                    lastMonthSales: Number(newProduct.lastMonthSales) || 0,
-                    brand: newProduct.brand,
-                    modelName: newProduct.modelName,
-                    couponCode: newProduct.couponCode,
-                    discountPercentage: Number(newProduct.discountPercentage) || 0
-                }),
-                credentials: 'include'
-
+            const res = await api.post('/products', {
+                ...newProduct,
+                price: Number(newProduct.price),
+                stock: Number(newProduct.stock),
+                rating: Number(newProduct.rating) || 0,
+                lastMonthSales: Number(newProduct.lastMonthSales) || 0,
+                brand: newProduct.brand,
+                modelName: newProduct.modelName,
+                couponCode: newProduct.couponCode,
+                discountPercentage: Number(newProduct.discountPercentage) || 0
             });
 
-            if (res.ok) {
+            if (res.status === 200 || res.status === 201) {
                 fetchProducts();
                 setIsAddModalOpen(false);
                 setNewProduct({ name: "", price: "", description: "", image: "", category: "", stock: "", brand: "", modelName: "", rating: "", lastMonthSales: "", couponCode: "", discountPercentage: "" });
                 alert("Product Added Successfully");
-            } else {
-                const err = await res.json();
-                alert(`Error: ${err.msg || 'Failed to add product'}`);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert("Server Error");
+            alert(`Error: ${error.response?.data?.msg || 'Failed to add product'}`);
         } finally {
             setIsSubmitting(false);
         }
@@ -192,34 +175,24 @@ const AdminDashboard = () => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const res = await fetch(`${backendUrl}/products/${editingProduct._id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    ...editingProduct,
-                    price: Number(editingProduct.price),
-                    stock: Number(editingProduct.stock),
-                    rating: Number(editingProduct.rating),
-                    lastMonthSales: Number(editingProduct.lastMonthSales),
-                    discountPercentage: Number(editingProduct.discountPercentage)
-                }),
-                credentials: 'include'
+            const res = await api.put(`/products/${editingProduct._id}`, {
+                ...editingProduct,
+                price: Number(editingProduct.price),
+                stock: Number(editingProduct.stock),
+                rating: Number(editingProduct.rating),
+                lastMonthSales: Number(editingProduct.lastMonthSales),
+                discountPercentage: Number(editingProduct.discountPercentage)
             });
 
-            if (res.ok) {
+            if (res.status === 200) {
                 fetchProducts();
                 setIsEditModalOpen(false);
                 setEditingProduct(null);
                 alert("Product Updated Successfully");
-            } else {
-                const err = await res.json();
-                alert(`Error: ${err.msg || 'Failed to update product'}`);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert("Server Error");
+            alert(`Error: ${error.response?.data?.msg || 'Failed to update product'}`);
         } finally {
             setIsSubmitting(false);
         }

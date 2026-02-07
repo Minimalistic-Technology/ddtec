@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Minus, Plus, Trash2, ArrowRight, CreditCard, Banknote, HelpCircle, CheckCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import api from "@/lib/api";
 
 export default function CheckoutPage() {
     const { cartItems, totalPrice, clearCart } = useCart();
@@ -83,13 +84,9 @@ export default function CheckoutPage() {
                 paymentMethod
             };
 
-            const res = await fetch('/api/orders', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(orderData)
-            });
+            const res = await api.post('/orders', orderData);
 
-            if (res.ok) {
+            if (res.status === 200 || res.status === 201) {
                 setIsSuccess(true);
                 clearCart();
             } else {

@@ -7,6 +7,7 @@ import { useCart } from "../../_context/CartContext";
 import { Loader2, Star, ShoppingBag, Truck, ShieldCheck, ArrowLeft, Tag, Layers, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import api from "@/lib/api";
 
 interface Product {
     _id: string;
@@ -30,16 +31,12 @@ export default function ProductDetailsPage() {
     const { addToCart } = useCart();
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
-    const backendUrl = '/api';
 
     useEffect(() => {
         const fetchProduct = async () => {
             try {
-                const res = await fetch(`${backendUrl}/products/${id}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setProduct(data);
-                }
+                const res = await api.get(`/products/${id}`);
+                setProduct(res.data);
             } catch (error) {
                 console.error("Failed to fetch product", error);
             } finally {
