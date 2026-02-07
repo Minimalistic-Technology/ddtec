@@ -33,7 +33,27 @@ const tools = [
   },
 ];
 
+import { useRouter, usePathname } from "next/navigation";
+
 const WhatWeOffer: React.FC = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#")) {
+      e.preventDefault();
+      const elementId = href.replace("/#", "");
+      if (pathname === "/") {
+        const element = document.getElementById(elementId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      } else {
+        router.push(`/?target=${elementId}`);
+      }
+    }
+  };
+
   return (
     <section id="what" className="py-24 bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
       {/* Background patterns */}
@@ -88,6 +108,7 @@ const WhatWeOffer: React.FC = () => {
 
               <Link
                 href="/#shop"
+                onClick={(e) => handleScroll(e, "/#shop")}
                 className="inline-flex items-center gap-2 text-sm font-semibold text-teal-600 dark:text-teal-400 group-hover:text-teal-500 transition-colors relative z-10"
               >
                 Shop Now <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />

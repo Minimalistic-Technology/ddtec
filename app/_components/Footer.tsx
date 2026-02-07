@@ -1,10 +1,30 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { Facebook, Twitter, Instagram, Linkedin, Hammer } from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    const sectionPaths = ["/shop", "/who", "/what", "/contact"];
+    if (sectionPaths.includes(href)) {
+      e.preventDefault();
+      const sectionId = href.substring(1);
+      if (pathname === "/") {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      } else {
+        sessionStorage.setItem("scroll-target", sectionId);
+        router.push("/");
+      }
+    }
+  };
 
   return (
     <footer className="bg-slate-950 text-slate-300 py-16 border-t border-slate-800">
@@ -34,10 +54,10 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold mb-6">Explore</h4>
             <ul className="space-y-4 text-sm">
-              <li><Link href="/components/WhoWeAre" className="hover:text-teal-400 transition-colors">Who We Are</Link></li>
-              <li><Link href="/components/WhatWeOffer" className="hover:text-teal-400 transition-colors">What We Offer</Link></li>
-              <li><Link href="/#shop" className="hover:text-teal-400 transition-colors">Shop Tools</Link></li>
-              <li><Link href="/components/Contact" className="hover:text-teal-400 transition-colors">Contact Us</Link></li>
+              <li><Link href="/who" onClick={(e) => handleScroll(e, "/who")} className="hover:text-teal-400 transition-colors">Who We Are</Link></li>
+              <li><Link href="/what" onClick={(e) => handleScroll(e, "/what")} className="hover:text-teal-400 transition-colors">What We Offer</Link></li>
+              <li><Link href="/shop" onClick={(e) => handleScroll(e, "/shop")} className="hover:text-teal-400 transition-colors">Shop Tools</Link></li>
+              <li><Link href="/contact" onClick={(e) => handleScroll(e, "/contact")} className="hover:text-teal-400 transition-colors">Contact Us</Link></li>
             </ul>
           </div>
 
