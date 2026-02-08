@@ -4,7 +4,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Sun, Moon, ShoppingBag, ChevronRight, User, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LoadingBar from "./LoadingBar";
@@ -22,13 +22,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Scroll Progress Logic
-  const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, {
-    stiffness: 100,
-    damping: 30,
-    restDelta: 0.001
-  });
+
 
   useEffect(() => {
     setMounted(true);
@@ -162,10 +156,7 @@ export default function Navbar() {
         )}
       >
         <nav className="container mx-auto px-4 md:px-6 h-16 flex items-center justify-between relative">
-          <motion.div
-            className="absolute bottom-0 left-0 right-0 h-[2px] bg-teal-500 origin-left"
-            style={{ scaleX }}
-          />
+
           <Link href="/" className="flex items-center gap-2 group">
             <div className="size-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-bold shadow-lg shadow-teal-500/20 group-hover:shadow-teal-500/40 transition-all">
               D
