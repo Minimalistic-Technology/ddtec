@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../_context/AuthContext";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Package, DollarSign, ShoppingBag, Loader2, Trash2, Edit, Plus, X, Tag, Image as ImageIcon, Layers } from "lucide-react";
+import { Users, Package, DollarSign, ShoppingBag, Loader2, Trash2, Edit, Plus, X, Tag, Image as ImageIcon, Layers, Ticket } from "lucide-react";
 import api from "@/lib/api";
 
 interface DashboardStats {
@@ -36,6 +36,8 @@ interface Product {
     stock: number;
     couponCode?: string;
     discountPercentage?: number;
+    discountType?: 'percentage' | 'fixed';
+    discountValue?: number;
 }
 
 const AdminDashboard = () => {
@@ -64,12 +66,11 @@ const AdminDashboard = () => {
         brand: "",
         modelName: "",
         rating: "",
-        lastMonthSales: "",
-        couponCode: "",
-        discountPercentage: ""
+        lastMonthSales: ""
     });
 
     const [editingProduct, setEditingProduct] = useState<any>(null);
+    const [viewingCoupons, setViewingCoupons] = useState<{ productName: string, coupons: any[] } | null>(null);
 
     useEffect(() => {
         if (!authLoading) {
@@ -106,8 +107,28 @@ const AdminDashboard = () => {
     const fetchProducts = async () => {
         setLoadingData(true);
         try {
-            const res = await api.get('/products');
-            setProductsList(res.data);
+            const [productsRes, couponsRes] = await Promise.all([
+                api.get('/products'),
+                api.get('/coupons')
+            ]);
+
+            const coupons = couponsRes.data;
+            const productsWithCoupons = productsRes.data.map((p: any) => {
+                // Find ALL applicable coupons for this product
+                const activeCoupons = coupons.filter((c: any) =>
+                    c.type === 'product' &&
+                    c.isActive &&
+                    c.applicableProducts &&
+                    c.applicableProducts.some((ap: any) => ap._id === p._id || ap === p._id)
+                );
+
+                return {
+                    ...p,
+                    couponDetails: activeCoupons // Now an array
+                };
+            });
+
+            setProductsList(productsWithCoupons);
         } catch (error) { console.error(error); }
         finally { setLoadingData(false); }
     };
@@ -135,15 +156,16 @@ const AdminDashboard = () => {
                 rating: Number(newProduct.rating) || 0,
                 lastMonthSales: Number(newProduct.lastMonthSales) || 0,
                 brand: newProduct.brand,
-                modelName: newProduct.modelName,
-                couponCode: newProduct.couponCode,
-                discountPercentage: Number(newProduct.discountPercentage) || 0
+                modelName: newProduct.modelName
             });
 
             if (res.status === 200 || res.status === 201) {
                 fetchProducts();
                 setIsAddModalOpen(false);
-                setNewProduct({ name: "", price: "", description: "", image: "", category: "", stock: "", brand: "", modelName: "", rating: "", lastMonthSales: "", couponCode: "", discountPercentage: "" });
+                setNewProduct({
+                    name: "", price: "", description: "", image: "", category: "", stock: "", brand: "",
+                    modelName: "", rating: "", lastMonthSales: ""
+                });
                 alert("Product Added Successfully");
             }
         } catch (error: any) {
@@ -164,9 +186,7 @@ const AdminDashboard = () => {
             brand: (product as any).brand || "",
             modelName: (product as any).modelName || "",
             rating: String((product as any).rating || 0),
-            lastMonthSales: String((product as any).lastMonthSales || 0),
-            couponCode: (product as any).couponCode || "",
-            discountPercentage: String((product as any).discountPercentage || 0)
+            lastMonthSales: String((product as any).lastMonthSales || 0)
         });
         setIsEditModalOpen(true);
     };
@@ -181,7 +201,9 @@ const AdminDashboard = () => {
                 stock: Number(editingProduct.stock),
                 rating: Number(editingProduct.rating),
                 lastMonthSales: Number(editingProduct.lastMonthSales),
-                discountPercentage: Number(editingProduct.discountPercentage)
+                discountPercentage: Number(editingProduct.discountValue),
+                discountType: editingProduct.discountType,
+                discountValue: Number(editingProduct.discountValue)
             });
 
             if (res.status === 200) {
@@ -215,8 +237,72 @@ const AdminDashboard = () => {
 
     if (!user || user.role !== "admin") return null;
 
+
+
     return (
         <section className="min-h-screen pt-24 px-6 md:px-12 bg-slate-50 dark:bg-slate-900">
+            {/* View Coupons Modal */}
+            <AnimatePresence>
+                {viewingCoupons && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-700"
+                        >
+                            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Active Coupons for {viewingCoupons.productName}</h3>
+                                <button onClick={() => setViewingCoupons(null)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                    <X className="size-6" />
+                                </button>
+                            </div>
+                            <div className="p-6 max-h-[60vh] overflow-y-auto">
+                                <div className="space-y-4">
+                                    {viewingCoupons.coupons.length > 0 ? (
+                                        viewingCoupons.coupons.map((coupon: any) => (
+                                            <div key={coupon._id} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <span className="text-lg font-bold text-teal-600 dark:text-teal-400 block">{coupon.code}</span>
+                                                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                                                            Discount: {coupon.discountType === 'fixed' ? '₹' : ''}{coupon.discountValue}{coupon.discountType === 'percentage' ? '%' : ''} off
+                                                        </span>
+                                                    </div>
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${coupon.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {coupon.isActive ? 'Active' : 'Inactive'}
+                                                    </span>
+                                                </div>
+                                                {coupon.expiresAt && (
+                                                    <div className="text-xs text-slate-400">
+                                                        Expires: {new Date(coupon.expiresAt).toLocaleDateString()}
+                                                    </div>
+                                                )}
+                                                {coupon.usageLimit && (
+                                                    <div className="text-xs text-slate-400 mt-1">
+                                                        Usage: {coupon.usedCount} / {coupon.usageLimit}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center text-slate-500 py-8">No active coupons found for this product.</div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="p-6 border-t border-slate-100 dark:border-slate-700">
+                                <button
+                                    onClick={() => setViewingCoupons(null)}
+                                    className="w-full px-4 py-2 rounded-xl font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             <div className="max-w-7xl mx-auto">
                 <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
@@ -243,6 +329,12 @@ const AdminDashboard = () => {
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeView === 'users' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
                         >
                             Users
+                        </button>
+                        <button
+                            onClick={() => router.push('/admin/coupons')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200`}
+                        >
+                            Coupons
                         </button>
                     </div>
                 </div>
@@ -369,35 +461,42 @@ const AdminDashboard = () => {
                             </button>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                            <table className="w-full text-left border-collapse border border-slate-200 dark:border-slate-700">
                                 <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-sm uppercase">
                                     <tr>
-                                        <th className="p-4">Product</th>
-                                        <th className="p-4">Category</th>
-                                        <th className="p-4">Price</th>
-                                        <th className="p-4">Stock</th>
-                                        <th className="p-4">Coupon</th>
-                                        <th className="p-4 text-right">Actions</th>
+                                        <th className="p-4 border border-slate-200 dark:border-slate-700">Product</th>
+                                        <th className="p-4 border border-slate-200 dark:border-slate-700">Category</th>
+                                        <th className="p-4 border border-slate-200 dark:border-slate-700">Price</th>
+                                        <th className="p-4 border border-slate-200 dark:border-slate-700">Stock</th>
+                                        <th className="p-4 border border-slate-200 dark:border-slate-700">Coupon</th>
+                                        <th className="p-4 border border-slate-200 dark:border-slate-700 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                                     {productsList.map(p => (
                                         <tr key={p._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                                            <td className="p-4 font-medium text-slate-900 dark:text-white">{p.name}</td>
-                                            <td className="p-4 text-slate-600 dark:text-slate-400">{p.category}</td>
-                                            <td className="p-4 text-slate-900 dark:text-white font-medium">₹{p.price}</td>
-                                            <td className="p-4">
+                                            <td className="p-4 border border-slate-100 dark:border-slate-700 font-medium text-slate-900 dark:text-white">{p.name}</td>
+                                            <td className="p-4 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400">{p.category}</td>
+                                            <td className="p-4 border border-slate-100 dark:border-slate-700 text-slate-900 dark:text-white font-medium">₹{p.price}</td>
+                                            <td className="p-4 border border-slate-100 dark:border-slate-700">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${p.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                                     {p.stock}
                                                 </span>
                                             </td>
-                                            <td className="p-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-teal-600 dark:text-teal-400">{p.couponCode}</span>
-                                                    <span className="text-xs text-slate-500">{p.discountPercentage || 0}% off</span>
-                                                </div>
+                                            <td className="p-4 border border-slate-100 dark:border-slate-700">
+                                                {(p as any).couponDetails && (p as any).couponDetails.length > 0 ? (
+                                                    <button
+                                                        onClick={() => setViewingCoupons({ productName: p.name, coupons: (p as any).couponDetails })}
+                                                        className="text-sm font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+                                                    >
+                                                        <Ticket className="size-4" />
+                                                        {(p as any).couponDetails.length} Coupon{(p as any).couponDetails.length > 1 ? 's' : ''} Applied
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-sm text-slate-400">-</span>
+                                                )}
                                             </td>
-                                            <td className="p-4 text-right flex justify-end gap-2">
+                                            <td className="p-4 border border-slate-100 dark:border-slate-700 text-right flex justify-end gap-2">
                                                 <button
                                                     onClick={() => handleEditClick(p)}
                                                     className="text-blue-500 hover:text-blue-700 p-2"
@@ -415,388 +514,342 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 )}
-
             </div>
 
             {/* Add Product Modal */}
             <AnimatePresence>
-                {isAddModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700"
-                        >
-                            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Add New Product</h3>
-                                <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors">
-                                    <X className="size-6" />
-                                </button>
-                            </div>
-                            <form onSubmit={handleAddProduct} className="flex flex-col max-h-[90vh]">
-                                <div className="p-6 space-y-4 overflow-y-auto">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Product Name</label>
-                                        <div className="relative">
-                                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
-                                            <input
-                                                required
-                                                type="text"
-                                                value={newProduct.name}
-                                                onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="e.g. Cordless Drill"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                {
+                    isAddModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700"
+                            >
+                                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Add New Product</h3>
+                                    <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                        <X className="size-6" />
+                                    </button>
+                                </div>
+                                <form onSubmit={handleAddProduct} className="flex flex-col max-h-[90vh]">
+                                    <div className="p-6 space-y-4 overflow-y-auto">
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Price (₹)</label>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Product Name</label>
                                             <div className="relative">
-                                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                                                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    value={newProduct.name}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="e.g. Cordless Drill"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Price (₹)</label>
+                                                <div className="relative">
+                                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                                                    <input
+                                                        required
+                                                        type="number"
+                                                        value={newProduct.price}
+                                                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                                                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Stock</label>
                                                 <input
                                                     required
                                                     type="number"
-                                                    value={newProduct.price}
-                                                    onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                    placeholder="0.00"
+                                                    value={newProduct.stock}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="100"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Brand</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.brand}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="e.g. Bosch"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.modelName}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, modelName: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="e.g. GSB 600"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Rating</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0"
+                                                    max="5"
+                                                    value={newProduct.rating}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, rating: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="4.5"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Last Month Sales</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.lastMonthSales}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, lastMonthSales: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="50"
                                                 />
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Stock</label>
-                                            <input
-                                                required
-                                                type="number"
-                                                value={newProduct.stock}
-                                                onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
+                                            <select
+                                                value={newProduct.category}
+                                                onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
                                                 className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="100"
+                                            >
+                                                <option value="" disabled>Select Category</option>
+                                                <option value="Drill Bits">Drill Bits</option>
+                                                <option value="Wood Cutter">Wood Cutter</option>
+                                                <option value="Grinding Tools">Grinding Tools</option>
+                                                <option value="Fasteners">Fasteners</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Image URL</label>
+                                            <div className="relative">
+                                                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.image}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="https://example.com/image.jpg"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                                            <textarea
+                                                value={newProduct.description}
+                                                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none h-24 resize-none"
+                                                placeholder="Product details..."
                                             />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Brand</label>
-                                            <input
-                                                type="text"
-                                                value={newProduct.brand}
-                                                onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="e.g. Bosch"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model Name</label>
-                                            <input
-                                                type="text"
-                                                value={newProduct.modelName}
-                                                onChange={(e) => setNewProduct({ ...newProduct, modelName: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="e.g. GSB 600"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Rating</label>
-                                            <input
-                                                type="number"
-                                                step="0.1"
-                                                min="0"
-                                                max="5"
-                                                value={newProduct.rating}
-                                                onChange={(e) => setNewProduct({ ...newProduct, rating: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="4.5"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Last Month Sales</label>
-                                            <input
-                                                type="number"
-                                                value={newProduct.lastMonthSales}
-                                                onChange={(e) => setNewProduct({ ...newProduct, lastMonthSales: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="50"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Coupon Code</label>
-                                            <input
-                                                type="text"
-                                                value={newProduct.couponCode}
-                                                onChange={(e) => setNewProduct({ ...newProduct, couponCode: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none font-mono"
-                                                placeholder="e.g. SAVE10"
-                                            />
-                                            <p className="text-[10px] text-slate-500 mt-1">Leave empty to auto-generate</p>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Discount (%)</label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                max="100"
-                                                value={newProduct.discountPercentage}
-                                                onChange={(e) => setNewProduct({ ...newProduct, discountPercentage: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
-                                        <select
-                                            value={newProduct.category}
-                                            onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                    <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAddModalOpen(false)}
+                                            className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                                         >
-                                            <option value="" disabled>Select Category</option>
-                                            <option value="Drill Bits">Drill Bits</option>
-                                            <option value="Wood Cutter">Wood Cutter</option>
-                                            <option value="Grinding Tools">Grinding Tools</option>
-                                            <option value="Fasteners">Fasteners</option>
-                                        </select>
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-lg hover:shadow-teal-500/30 flex items-center justify-center gap-2"
+                                        >
+                                            {isSubmitting ? <Loader2 className="animate-spin size-5" /> : 'Create Product'}
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Image URL</label>
-                                        <div className="relative">
-                                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
-                                            <input
-                                                type="text"
-                                                value={newProduct.image}
-                                                onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="https://example.com/image.jpg"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
-                                        <textarea
-                                            value={newProduct.description}
-                                            onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none h-24 resize-none"
-                                            placeholder="Product details..."
-                                        />
-                                    </div>
-                                </div>
-                                <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsAddModalOpen(false)}
-                                        className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-lg hover:shadow-teal-500/30 flex items-center justify-center gap-2"
-                                    >
-                                        {isSubmitting ? <Loader2 className="animate-spin size-5" /> : 'Create Product'}
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+                                </form>
+                            </motion.div>
+                        </div>
+                    )
+                }
+            </AnimatePresence >
 
             {/* Edit Product Modal */}
             <AnimatePresence>
-                {isEditModalOpen && editingProduct && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700"
-                        >
-                            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Edit Product</h3>
-                                <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors">
-                                    <X className="size-6" />
-                                </button>
-                            </div>
-                            <form onSubmit={handleUpdateProduct} className="flex flex-col max-h-[90vh]">
-                                <div className="p-6 space-y-4 overflow-y-auto">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Product Name</label>
-                                        <div className="relative">
-                                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
-                                            <input
-                                                required
-                                                type="text"
-                                                value={editingProduct.name}
-                                                onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="e.g. Cordless Drill"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                {
+                    isEditModalOpen && editingProduct && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700"
+                            >
+                                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Edit Product</h3>
+                                    <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                        <X className="size-6" />
+                                    </button>
+                                </div>
+                                <form onSubmit={handleUpdateProduct} className="flex flex-col max-h-[90vh]">
+                                    <div className="p-6 space-y-4 overflow-y-auto">
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Price (₹)</label>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Product Name</label>
                                             <div className="relative">
-                                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                                                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    value={editingProduct.name}
+                                                    onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="e.g. Cordless Drill"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Price (₹)</label>
+                                                <div className="relative">
+                                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                                                    <input
+                                                        required
+                                                        type="number"
+                                                        value={editingProduct.price}
+                                                        onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
+                                                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Stock</label>
                                                 <input
                                                     required
                                                     type="number"
-                                                    value={editingProduct.price}
-                                                    onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value })}
-                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                    placeholder="0.00"
+                                                    value={editingProduct.stock}
+                                                    onChange={(e) => setEditingProduct({ ...editingProduct, stock: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="100"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Brand</label>
+                                                <input
+                                                    type="text"
+                                                    value={editingProduct.brand}
+                                                    onChange={(e) => setEditingProduct({ ...editingProduct, brand: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="e.g. Bosch"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={editingProduct.modelName}
+                                                    onChange={(e) => setEditingProduct({ ...editingProduct, modelName: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="e.g. GSB 600"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Rating</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0"
+                                                    max="5"
+                                                    value={editingProduct.rating}
+                                                    onChange={(e) => setEditingProduct({ ...editingProduct, rating: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="4.5"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Last Month Sales</label>
+                                                <input
+                                                    type="number"
+                                                    value={editingProduct.lastMonthSales}
+                                                    onChange={(e) => setEditingProduct({ ...editingProduct, lastMonthSales: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="50"
                                                 />
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Stock</label>
-                                            <input
-                                                required
-                                                type="number"
-                                                value={editingProduct.stock}
-                                                onChange={(e) => setEditingProduct({ ...editingProduct, stock: e.target.value })}
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
+                                            <select
+                                                value={editingProduct.category}
+                                                onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
                                                 className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="100"
+                                            >
+                                                <option value="" disabled>Select Category</option>
+                                                <option value="Drill Bits">Drill Bits</option>
+                                                <option value="Wood Cutter">Wood Cutter</option>
+                                                <option value="Grinding Tools">Grinding Tools</option>
+                                                <option value="Fasteners">Fasteners</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Image URL</label>
+                                            <div className="relative">
+                                                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                                                <input
+                                                    type="text"
+                                                    value={editingProduct.image}
+                                                    onChange={(e) => setEditingProduct({ ...editingProduct, image: e.target.value })}
+                                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="https://example.com/image.jpg"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                                            <textarea
+                                                value={editingProduct.description}
+                                                onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none h-24 resize-none"
+                                                placeholder="Product details..."
                                             />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Brand</label>
-                                            <input
-                                                type="text"
-                                                value={editingProduct.brand}
-                                                onChange={(e) => setEditingProduct({ ...editingProduct, brand: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="e.g. Bosch"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model Name</label>
-                                            <input
-                                                type="text"
-                                                value={editingProduct.modelName}
-                                                onChange={(e) => setEditingProduct({ ...editingProduct, modelName: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="e.g. GSB 600"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Rating</label>
-                                            <input
-                                                type="number"
-                                                step="0.1"
-                                                min="0"
-                                                max="5"
-                                                value={editingProduct.rating}
-                                                onChange={(e) => setEditingProduct({ ...editingProduct, rating: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="4.5"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Last Month Sales</label>
-                                            <input
-                                                type="number"
-                                                value={editingProduct.lastMonthSales}
-                                                onChange={(e) => setEditingProduct({ ...editingProduct, lastMonthSales: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="50"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Coupon Code</label>
-                                            <input
-                                                type="text"
-                                                value={editingProduct.couponCode}
-                                                onChange={(e) => setEditingProduct({ ...editingProduct, couponCode: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none font-mono"
-                                                placeholder="e.g. SAVE10"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Discount (%)</label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                max="100"
-                                                value={editingProduct.discountPercentage}
-                                                onChange={(e) => setEditingProduct({ ...editingProduct, discountPercentage: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
-                                        <select
-                                            value={editingProduct.category}
-                                            onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                    <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsEditModalOpen(false)}
+                                            className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                                         >
-                                            <option value="" disabled>Select Category</option>
-                                            <option value="Drill Bits">Drill Bits</option>
-                                            <option value="Wood Cutter">Wood Cutter</option>
-                                            <option value="Grinding Tools">Grinding Tools</option>
-                                            <option value="Fasteners">Fasteners</option>
-                                        </select>
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-lg hover:shadow-teal-500/30 flex items-center justify-center gap-2"
+                                        >
+                                            {isSubmitting ? <Loader2 className="animate-spin size-5" /> : 'Update Product'}
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Image URL</label>
-                                        <div className="relative">
-                                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
-                                            <input
-                                                type="text"
-                                                value={editingProduct.image}
-                                                onChange={(e) => setEditingProduct({ ...editingProduct, image: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                placeholder="https://example.com/image.jpg"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
-                                        <textarea
-                                            value={editingProduct.description}
-                                            onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none h-24 resize-none"
-                                            placeholder="Product details..."
-                                        />
-                                    </div>
-                                </div>
-                                <div className="p-6 border-t border-slate-100 dark:border-slate-700 flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsEditModalOpen(false)}
-                                        className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-lg hover:shadow-teal-500/30 flex items-center justify-center gap-2"
-                                    >
-                                        {isSubmitting ? <Loader2 className="animate-spin size-5" /> : 'Update Product'}
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-        </section>
+                                </form>
+                            </motion.div>
+                        </div>
+                    )
+                }
+            </AnimatePresence >
+        </section >
     );
 };
 

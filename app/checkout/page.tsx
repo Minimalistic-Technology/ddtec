@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import { useCart } from "../_context/CartContext";
 import { useAuth } from "../_context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, Trash2, ArrowRight, CreditCard, Banknote, HelpCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Minus, Plus, Trash2, ArrowRight, CreditCard, Banknote, HelpCircle, CheckCircle, Loader2, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import api from "@/lib/api";
 
 export default function CheckoutPage() {
-    const { cartItems, totalPrice, clearCart } = useCart();
+    const { cartItems, totalPrice, clearCart, appliedCoupon, subtotal, applyCoupon, removeCoupon, loading: cartLoading } = useCart();
     const { user, loading } = useAuth();
     const router = useRouter();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -26,10 +26,25 @@ export default function CheckoutPage() {
     });
 
     const [paymentMethod, setPaymentMethod] = useState("card");
-    const [couponCode, setCouponCode] = useState("");
-    const [appliedDiscount, setAppliedDiscount] = useState(0);
-    const [couponError, setCouponError] = useState("");
-    const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+    const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchCoupons = async () => {
+            try {
+                const res = await api.get('/coupons');
+                // Filter for active, cart-wide coupons
+                const cartCoupons = res.data.filter((c: any) =>
+                    c.isActive &&
+                    c.type === 'cart' &&
+                    (!c.expiresAt || new Date(c.expiresAt) > new Date())
+                );
+                setAvailableCoupons(cartCoupons);
+            } catch (error) {
+                console.error("Failed to fetch coupons", error);
+            }
+        };
+        fetchCoupons();
+    }, []);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -41,36 +56,21 @@ export default function CheckoutPage() {
     }, [user, loading, router]);
 
 
-    const handleApplyCoupon = () => {
-        setCouponError("");
-        setIsApplyingCoupon(true);
+    useEffect(() => {
+        if (!loading && !cartLoading && cartItems.length === 0) {
+            router.push('/cart');
+        }
+    }, [cartItems, loading, cartLoading, router]);
 
-        // Simulate a small delay for better UX
-        setTimeout(() => {
-            let totalDiscount = 0;
-            let foundCount = 0;
+    // Free Delivery logic matching Cart Page
+    const freeDeliveryThreshold = 500;
+    const isFreeDelivery = subtotal >= freeDeliveryThreshold;
+    const shippingCost = isFreeDelivery ? 0 : 50;
 
-            cartItems.forEach(item => {
-                const product = item.product as any;
-                if (product.couponCode && product.couponCode.toUpperCase() === couponCode.toUpperCase()) {
-                    totalDiscount += (item.product.price * (product.discountPercentage || 0) / 100) * item.quantity;
-                    foundCount++;
-                }
-            });
-
-            if (foundCount > 0) {
-                setAppliedDiscount(totalDiscount);
-                setCouponError("");
-                alert("Coupon applied successfully!");
-            } else {
-                setAppliedDiscount(0);
-                setCouponError("Invalid coupon code for items in cart");
-            }
-            setIsApplyingCoupon(false);
-        }, 500);
-    };
-
-    const finalTotal = (totalPrice * 1.1) - appliedDiscount;
+    // totalPrice from context is (subtotal - discount). 
+    // We add shipping + tax to get final total.
+    const tax = totalPrice * 0.1;
+    const finalTotal = totalPrice + tax + shippingCost;
 
     const handlePlaceOrder = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -79,9 +79,11 @@ export default function CheckoutPage() {
         try {
             const orderData = {
                 items: cartItems,
-                totalAmount: finalTotal, // Including Tax and Discount
+                totalAmount: finalTotal,
                 shippingInfo: formData,
-                paymentMethod
+                paymentMethod,
+                coupon: appliedCoupon ? appliedCoupon.code : undefined,
+                discountAmount: appliedCoupon ? appliedCoupon.discountAmount : 0
             };
 
             const res = await api.post('/orders', orderData);
@@ -128,15 +130,11 @@ export default function CheckoutPage() {
         );
     }
 
-    if (cartItems.length === 0) {
-        router.push('/cart');
-        return null;
-    }
+    if (cartLoading || cartItems.length === 0) return null;
 
     return (
         <section className="min-h-screen pt-24 pb-12 px-6 bg-slate-50 dark:bg-slate-950">
             <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
-
                 {/* Left Column: Shipping & Payment */}
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
@@ -278,46 +276,84 @@ export default function CheckoutPage() {
                             ))}
                         </div>
 
-                        <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                            <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">Have a Coupon?</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={couponCode}
-                                    onChange={(e) => setCouponCode(e.target.value)}
-                                    placeholder="Enter code"
-                                    className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 outline-none text-sm font-mono"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleApplyCoupon}
-                                    disabled={!couponCode || isApplyingCoupon}
-                                    className="px-4 py-2 bg-slate-900 dark:bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-slate-800 dark:hover:bg-teal-700 transition-all disabled:opacity-50"
-                                >
-                                    {isApplyingCoupon ? <Loader2 className="animate-spin size-4" /> : "Apply"}
-                                </button>
+                        {appliedCoupon && (
+                            <div className="mb-6 p-3 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 rounded-lg flex flex-col gap-2">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-bold text-green-700 dark:text-green-400">{appliedCoupon.code}</p>
+                                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${appliedCoupon.type === 'product' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
+                                                {appliedCoupon.type === 'product' ? 'Product' : 'Cart'}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">Coupon applied</p>
+                                    </div>
+                                    <button onClick={removeCoupon} className="text-slate-400 hover:text-red-500 transition-colors p-1" title="Remove Coupon">
+                                        <Trash2 className="size-4" />
+                                    </button>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-green-100 dark:border-green-900/30">
+                                    <span className="text-xs font-semibold text-green-700 dark:text-green-400">Savings</span>
+                                    <span className="font-bold text-green-700 dark:text-green-400">-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
+                                </div>
                             </div>
-                            {couponError && <p className="text-red-500 text-[10px] mt-1 font-medium">{couponError}</p>}
-                            {appliedDiscount > 0 && <p className="text-teal-600 text-[10px] mt-1 font-bold">Discount of ₹{appliedDiscount} applied!</p>}
-                        </div>
+                        )}
+
+                        {!appliedCoupon && availableCoupons.length > 0 && (
+                            <div className="mb-6">
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Available Coupons</h4>
+                                <div className="space-y-2">
+                                    {availableCoupons.map(coupon => (
+                                        <div key={coupon._id} className="p-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-lg flex items-center justify-between">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <Tag className="size-3 text-teal-600 dark:text-teal-400" />
+                                                    <span className="text-sm font-bold text-slate-900 dark:text-white">{coupon.code}</span>
+                                                </div>
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                    Save {coupon.discountType === 'fixed' ? '₹' : ''}{coupon.discountValue}{coupon.discountType === 'percentage' ? '%' : ''}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    const result = await applyCoupon(coupon.code);
+                                                    if (result.success) {
+                                                        // Optional: Success toast
+                                                    } else {
+                                                        alert(result.message); // Show error reason (e.g., "Min order value not met")
+                                                    }
+                                                }}
+                                                className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-teal-50 transition-colors"
+                                            >
+                                                Apply
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                             <div className="flex justify-between text-slate-600 dark:text-slate-400">
                                 <span>Subtotal</span>
-                                <span>₹{totalPrice.toFixed(2)}</span>
+                                <span>₹{subtotal.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-slate-600 dark:text-slate-400">
                                 <span>Tax (10%)</span>
-                                <span>₹{(totalPrice * 0.1).toFixed(2)}</span>
+                                <span>₹{tax.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-slate-600 dark:text-slate-400">
                                 <span>Shipping</span>
-                                <span className="text-teal-600 font-medium">Free</span>
+                                {isFreeDelivery ? (
+                                    <span className="text-green-600 font-medium">Free</span>
+                                ) : (
+                                    <span>₹50.00</span>
+                                )}
                             </div>
-                            {appliedDiscount > 0 && (
+                            {appliedCoupon && (
                                 <div className="flex justify-between text-teal-600 font-medium">
                                     <span>Discount</span>
-                                    <span>-₹{appliedDiscount.toFixed(2)}</span>
+                                    <span>-₹{appliedCoupon.discountAmount.toFixed(2)}</span>
                                 </div>
                             )}
                             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-end">
@@ -332,3 +368,4 @@ export default function CheckoutPage() {
         </section>
     );
 }
+
