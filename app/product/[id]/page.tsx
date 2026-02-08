@@ -30,20 +30,35 @@ export default function ProductDetailsPage() {
     const { id } = useParams();
     const { addToCart } = useCart();
     const [product, setProduct] = useState<Product | null>(null);
+    const [coupons, setCoupons] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchProduct = async () => {
+        const fetchData = async () => {
             try {
-                const res = await api.get(`/products/${id}`);
-                setProduct(res.data);
+                const [productRes, couponsRes] = await Promise.all([
+                    api.get(`/products/${id}`),
+                    api.get('/coupons')
+                ]);
+
+                setProduct(productRes.data);
+
+                // Filter applicable coupons
+                const activeCoupons = couponsRes.data.filter((c: any) =>
+                    c.type === 'product' &&
+                    c.isActive &&
+                    c.applicableProducts &&
+                    c.applicableProducts.some((ap: any) => ap._id === id || ap === id)
+                );
+                setCoupons(activeCoupons);
+
             } catch (error) {
-                console.error("Failed to fetch product", error);
+                console.error("Failed to fetch product or coupons", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchProduct();
+        fetchData();
     }, [id]);
 
     if (loading) {
@@ -179,6 +194,36 @@ export default function ProductDetailsPage() {
                                     >
                                         Copy Code
                                     </button>
+                                </div>
+                            )}
+
+                            {/* Dynamic Coupons Section */}
+                            {coupons.length > 0 && (
+                                <div className="mb-8 space-y-3">
+                                    {coupons.map((coupon: any) => (
+                                        <div key={coupon._id} className="p-4 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-2xl flex items-center justify-between group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="size-10 rounded-xl bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                                                    <Tag className="size-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Available Offer</p>
+                                                    <p className="text-sm text-slate-700 dark:text-slate-300">
+                                                        Use <span className="font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">{coupon.code}</span> to save {coupon.discountType === 'fixed' ? '₹' : ''}{coupon.discountValue}{coupon.discountType === 'percentage' ? '%' : ''}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(coupon.code || "");
+                                                    alert("Coupon code copied!");
+                                                }}
+                                                className="px-4 py-2 bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 rounded-lg text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors"
+                                            >
+                                                Copy Code
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 
