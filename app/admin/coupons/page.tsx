@@ -5,6 +5,7 @@ import { useAuth } from "../../_context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Loader2, Trash2, Plus, Tag, ArrowLeft, Edit } from "lucide-react";
 import api from "@/lib/api";
+import ToggleSwitch from "../components/ToggleSwitch";
 
 interface Coupon {
     _id: string;
@@ -55,6 +56,19 @@ const CouponsPage = () => {
         } catch (error) {
             console.error("Failed to delete coupon", error);
             alert("Failed to delete coupon");
+        }
+    };
+
+    const toggleCouponStatus = async (id: string, currentStatus: boolean) => {
+        try {
+            // Check if endpoint exists, if not we might need to create it or use update
+            // Assuming a patch/put endpoint for status or generic update
+            // For now, let's assume we can update the coupon with the new status
+            await api.put(`/coupons/${id}`, { isActive: !currentStatus });
+            setCoupons(coupons.map(c => c._id === id ? { ...c, isActive: !currentStatus } : c));
+        } catch (error: any) {
+            console.error("Failed to update coupon status", error);
+            alert(error.response?.data?.msg || "Failed to update status");
         }
     };
 
@@ -149,7 +163,8 @@ const CouponsPage = () => {
                                                     {coupon.isActive ? 'Active' : 'Inactive'}
                                                 </span>
                                             </td>
-                                            <td className="p-4 text-right flex justify-end gap-2">
+                                            <td className="p-4 text-right flex justify-end items-center gap-2">
+                                                <ToggleSwitch isOn={coupon.isActive} onToggle={() => toggleCouponStatus(coupon._id, coupon.isActive)} />
                                                 <button
                                                     onClick={() => router.push(`/admin/coupons/${coupon._id}`)}
                                                     className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"

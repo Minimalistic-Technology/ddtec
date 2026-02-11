@@ -41,12 +41,51 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(false);
     const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number; type: string } | null>(null);
 
+    // Initial Load from LocalStorage for Guest
+    useEffect(() => {
+        if (!user) {
+            const localCart = localStorage.getItem('guestCart');
+            if (localCart) {
+                try {
+                    const parsed = JSON.parse(localCart);
+                    if (Array.isArray(parsed)) {
+                        setCartItems(parsed.filter(item => item && item.product));
+                    }
+                } catch (e) {
+                    console.error("Failed to parse local cart", e);
+                }
+            }
+        }
+    }, [user]);
+
+    // Save to LocalStorage whenever cart changes (if guest)
+    useEffect(() => {
+        if (!user) {
+            localStorage.setItem('guestCart', JSON.stringify(cartItems));
+        }
+    }, [cartItems, user]);
+
     // Fetch Cart on User Change
     useEffect(() => {
         if (user) {
             fetchCart();
         } else {
-            setCartItems([]);
+            // Already handled by initial load, but ensures we switch to local if user logs out
+            const localCart = localStorage.getItem('guestCart');
+            if (localCart) {
+                try {
+                    const parsed = JSON.parse(localCart);
+                    if (Array.isArray(parsed)) {
+                        setCartItems(parsed.filter(item => item && item.product));
+                    } else {
+                        setCartItems([]);
+                    }
+                } catch (e) {
+                    setCartItems([]);
+                }
+            } else {
+                setCartItems([]);
+            }
             setAppliedCoupon(null);
         }
     }, [user]);
@@ -55,7 +94,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(true);
         try {
             const res = await api.get('/cart');
-            setCartItems(res.data.items || []);
+            const items = res.data.items || [];
+            setCartItems(items.filter((item: any) => item && item.product));
         } catch (error) {
             console.error("Failed to fetch cart", error);
         } finally {
@@ -65,16 +105,44 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const addToCart = async (productId: string, quantity: number = 1) => {
         if (!user) {
-            alert("Please login to add items to cart");
+            // Guest Logic
+            try {
+                // Fetch product details for UI since we can't populate via backend
+                // For now, we might need a way to get product details if we don't have them.
+                // Assuming we might need to fetch product info or the caller passes it? 
+                // The current signature only takes productId.
+                // We'll fetch the product from API to get details for the cart item.
+                const productRes = await api.get(`/products/${productId}`);
+                const product = productRes.data;
+
+                setCartItems(prev => {
+                    // Filter out any broken items already in cart
+                    const cleanPrev = prev.filter(item => item && item.product);
+                    const existingIndex = cleanPrev.findIndex(item => item.product?._id === productId);
+                    let newItems = [...cleanPrev];
+                    if (existingIndex > -1) {
+                        newItems[existingIndex].quantity += quantity;
+                    } else {
+                        newItems.push({
+                            product: product,
+                            quantity: quantity,
+                            _id: `local_${Date.now()}_${Math.random()}` // Temp ID
+                        });
+                    }
+                    return newItems;
+                });
+                alert("Item added to cart!");
+            } catch (error) {
+                console.error("Failed to add to local cart", error);
+                alert("Failed to add to cart");
+            }
             return;
         }
+
         try {
             const res = await api.post('/cart/add', { productId, quantity });
             if (res.status === 200 || res.status === 201) {
                 setCartItems(res.data.items);
-                // Re-validate coupon if applied? For now, remove it to be safe or re-calc on backend?
-                // Simplest is to remove coupon on cart change to force re-validation, or just keep it and let checkout validate.
-                // For now, let's keep it but maybe we should clear it if cart changes significantly.
                 setAppliedCoupon(null);
                 alert("Item added to cart!");
             }
@@ -85,6 +153,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const removeFromCart = async (productId: string) => {
+        if (!user) {
+            setCartItems(prev => prev.filter(item => item.product?._id && item.product._id !== productId));
+            setAppliedCoupon(null);
+            return;
+        }
         try {
             const res = await api.delete(`/cart/${productId}`);
             if (res.status === 200) {
@@ -97,6 +170,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const updateQuantity = async (productId: string, quantity: number) => {
+        if (!user) {
+            setCartItems(prev => {
+                return prev
+                    .filter(item => item && item.product) // Remove broken items
+                    .map(item => {
+                        if (item.product?._id === productId) {
+                            return { ...item, quantity };
+                        }
+                        return item;
+                    }).filter(item => item.quantity > 0);
+            });
+            setAppliedCoupon(null);
+            return;
+        }
+
         try {
             const res = await api.put('/cart/update', { productId, quantity });
             if (res.status === 200) {
@@ -111,6 +199,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const clearCart = () => {
         setCartItems([]);
         setAppliedCoupon(null);
+        if (!user) {
+            localStorage.removeItem('guestCart');
+        }
     };
 
     const applyCoupon = async (code: string) => {

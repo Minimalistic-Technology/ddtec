@@ -9,14 +9,19 @@ interface User {
     name: string;
     email: string;
     role: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    createdAt?: string;
+    address?: string;
 }
 
 interface AuthContextType {
     user: User | null;
     login: (email: string, password: string) => Promise<void>;
-    signup: (name: string, email: string, password: string) => Promise<void>;
     logout: () => void;
     loading: boolean;
+    checkUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,22 +31,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
+    const checkUser = async () => {
+        try {
+            const res = await api.get('/auth/me');
+            setUser(res.data);
+        } catch (error) {
+            console.log("No active session");
+            setUser(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         // Explicitly clear legacy localstorage items to satisfy user request
         localStorage.removeItem("ddtec_user");
         localStorage.removeItem("ddtec_token");
 
         // Check session cookie on mount via /me
-        const checkUser = async () => {
-            try {
-                const res = await api.get('/auth/me');
-                setUser(res.data);
-            } catch (error) {
-                console.log("No active session");
-            } finally {
-                setLoading(false);
-            }
-        };
         checkUser();
     }, []);
 
@@ -63,23 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const signup = async (name: string, email: string, password: string) => {
-        try {
-            const res = await api.post('/auth/register', { name, email, password });
 
-            setUser(res.data.user);
-
-            if (res.data.user.role === 'admin') {
-                router.push("/admin");
-            } else {
-                router.push("/");
-            }
-        } catch (error: any) {
-            const msg = error.response?.data?.msg || 'Signup failed';
-            console.error("Signup failed:", msg);
-            throw new Error(msg);
-        }
-    };
 
     const logout = async () => {
         try {
@@ -92,8 +83,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    // Signup logic is now handled directly in app/signup/page.tsx due to complexity (OTP, etc)
+    // We keep interface clean.
+
     return (
-        <AuthContext.Provider value={{ user, login, signup, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, loading, checkUser }}>
             {children}
         </AuthContext.Provider>
     );

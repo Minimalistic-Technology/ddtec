@@ -7,6 +7,7 @@ import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import api from "@/lib/api";
 
 export default function CartPage() {
     const { cartItems, removeFromCart, updateQuantity, loading, subtotal, totalPrice, applyCoupon, removeCoupon, appliedCoupon } = useCart();
@@ -14,12 +15,26 @@ export default function CartPage() {
     const router = useRouter();
     const [couponCode, setCouponCode] = useState("");
     const [couponMessage, setCouponMessage] = useState({ type: '', text: '' });
+    const [activeCouponCodes, setActiveCouponCodes] = useState<string[]>([]);
 
     useEffect(() => {
-        if (!user && !loading) {
-            router.push('/login');
-        }
-    }, [user, loading, router]);
+        // Guest allowed, no redirect needed
+    }, []);
+
+    useEffect(() => {
+        const fetchCoupons = async () => {
+            try {
+                const res = await api.get('/coupons');
+                const activeCodes = res.data
+                    .filter((c: any) => c.isActive)
+                    .map((c: any) => c.code);
+                setActiveCouponCodes(activeCodes);
+            } catch (error) {
+                console.error("Failed to fetch coupons for validation", error);
+            }
+        };
+        fetchCoupons();
+    }, []);
 
     const handleApplyCoupon = async () => {
         if (!couponCode.trim()) return;
@@ -91,7 +106,7 @@ export default function CartPage() {
                     <div className="lg:col-span-2 space-y-4">
                         {validCartItems.map((item) => (
                             <div key={item._id} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex gap-4 shadow-sm relative">
-                                {item.product.couponCode && (
+                                {item.product.couponCode && activeCouponCodes.includes(item.product.couponCode) && (
                                     <div className="absolute top-2 right-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full border border-purple-200">
                                         Coupon: {item.product.couponCode}
                                     </div>

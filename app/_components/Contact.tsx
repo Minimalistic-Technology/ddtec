@@ -139,7 +139,7 @@ const Contact: React.FC = () => {
                                             name="firstName"
                                             type="text"
                                             className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
-                                            defaultValue={user?.name ? user.name.split(" ")[0] : ""}
+                                            defaultValue={user?.firstName || (user?.name ? user.name.split(" ")[0] : "")}
                                             placeholder="John"
                                         />
                                     </div>
@@ -150,6 +150,7 @@ const Contact: React.FC = () => {
                                             name="lastName"
                                             type="text"
                                             className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                                            defaultValue={user?.lastName || (user?.name && user.name.split(" ").length > 1 ? user.name.split(" ").slice(1).join(" ") : "")}
                                             placeholder="Doe"
                                         />
                                     </div>

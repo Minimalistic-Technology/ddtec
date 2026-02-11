@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Sun, Moon, ShoppingBag, ChevronRight, User, LogOut } from "lucide-react";
+import { Menu, X, Sun, Moon, ShoppingBag, ChevronRight, User, LogOut, ChevronDown, Package, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LoadingBar from "./LoadingBar";
 import { useAuth } from "../_context/AuthContext";
@@ -18,6 +18,7 @@ export default function Navbar() {
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [currentHash, setCurrentHash] = useState("");
   const pathname = usePathname();
   const router = useRouter();
@@ -155,7 +156,7 @@ export default function Navbar() {
             : "bg-transparent border-transparent"
         )}
       >
-        <nav className="container mx-auto px-4 md:px-6 h-16 flex items-center justify-between relative">
+        <nav className={cn("px-4 md:px-6 h-16 flex items-center justify-between relative", pathname?.startsWith('/admin') ? "w-full" : "container mx-auto")}>
 
           <Link href="/" className="flex items-center gap-2 group">
             <div className="size-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-bold shadow-lg shadow-teal-500/20 group-hover:shadow-teal-500/40 transition-all">
@@ -237,25 +238,65 @@ export default function Navbar() {
 
             {mounted && (
               user ? (
-                <div className="hidden md:flex items-center gap-4">
-                  <span className={cn(
-                    "font-medium",
-                    scrolled ? "text-slate-700 dark:text-slate-200" : "text-slate-700 dark:text-slate-200"
-                  )}>
-                    Hi, {user.name.split(' ')[0]}
-                  </span>
+                <div className="hidden md:block relative">
                   <button
-                    onClick={logout}
-                    title="Logout"
+                    onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                    onBlur={() => setTimeout(() => setShowProfileDropdown(false), 200)}
                     className={cn(
-                      "p-2 rounded-full transition-colors font-medium items-center gap-2 flex",
-                      scrolled
-                        ? "hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-700 dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400"
-                        : "text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10"
+                      "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all hover:bg-slate-100 dark:hover:bg-slate-800",
+                      scrolled ? "text-slate-700 dark:text-slate-200" : "text-slate-700 dark:text-slate-200"
                     )}
                   >
-                    <LogOut className="size-5" />
+                    <div className="size-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-600">
+                      <User className="size-4" />
+                    </div>
+                    <span className="font-medium">
+                      {user.firstName || user.name?.split(' ')[0] || user.email?.split('@')[0] || 'User'}
+                    </span>
+                    <ChevronDown className={cn("size-4 transition-transform", showProfileDropdown && "rotate-180")} />
                   </button>
+
+                  <AnimatePresence>
+                    {showProfileDropdown && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 py-2 overflow-hidden"
+                      >
+                        <div className="px-4 py-2 border-b border-slate-50 dark:border-slate-800 mb-1">
+                          <p className="text-xs font-bold text-slate-400 uppercase">Account</p>
+                          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.email}</p>
+                        </div>
+
+                        <Link
+                          href="/orders"
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                          <Package className="size-4" />
+                          Order History
+                        </Link>
+
+                        <Link
+                          href="/profile"
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                          <Settings className="size-4" />
+                          Account Details
+                        </Link>
+
+                        <div className="mt-1 pt-1 border-t border-slate-50 dark:border-slate-800">
+                          <button
+                            onClick={logout}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                          >
+                            <LogOut className="size-4" />
+                            Logout
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               ) : (
                 <Link
