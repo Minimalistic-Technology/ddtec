@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Mail, Lock, ArrowRight, Loader2, Phone, MessageSquare, User, Shield } from "lucide-react";
@@ -9,7 +9,7 @@ import { useToast } from "../_context/ToastContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 
-const Login = () => {
+const LoginForm = () => {
     const { login, checkUser } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -396,6 +396,18 @@ const Login = () => {
                 </AnimatePresence>
             </motion.div>
         </section>
+    );
+};
+
+const Login = () => {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+                <Loader2 className="animate-spin size-10 text-teal-600" />
+            </div>
+        }>
+            <LoginForm />
+        </Suspense>
     );
 };
 
