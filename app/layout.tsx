@@ -5,6 +5,7 @@ import Navbar from "./_components/Navbar";
 import Footer from "./_components/Footer";
 import { AuthProvider } from "./_context/AuthContext";
 import { CartProvider } from "./_context/CartContext";
+import { ToastProvider } from "./_context/ToastContext";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -23,14 +24,16 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <CartProvider>
-              <Navbar />
+              <ToastProvider>
+                <Navbar />
 
-              {/* Main content grows to push footer down */}
-              <main className="min-h-screen flex-1">
-                {children}
-              </main>
+                {/* Main content grows to push footer down */}
+                <main className="min-h-screen flex-1">
+                  {children}
+                </main>
 
-              <Footer />
+                <Footer />
+              </ToastProvider>
             </CartProvider>
           </AuthProvider>
         </ThemeProvider>
