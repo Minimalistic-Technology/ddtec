@@ -1,9 +1,11 @@
+
 "use client";
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Send, MessageSquare } from "lucide-react";
 import { useAuth } from "../_context/AuthContext";
+import axios from "axios";
 
 const Contact: React.FC = () => {
     const { user } = useAuth();
@@ -22,19 +24,13 @@ const Contact: React.FC = () => {
             message: formData.get("message"),
         };
 
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-
         try {
-            const response = await fetch(`${backendUrl}/contact`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...data,
-                    userId: user?.id
-                }),
+            const response = await axios.post('/api/contact', {
+                ...data,
+                userId: user?.id
             });
 
-            if (response.ok) {
+            if (response.status === 200 || response.status === 201) {
                 setFormState("success");
                 form.reset();
                 setTimeout(() => setFormState("idle"), 3000);
@@ -143,7 +139,7 @@ const Contact: React.FC = () => {
                                             name="firstName"
                                             type="text"
                                             className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
-                                            defaultValue={user?.name ? user.name.split(" ")[0] : ""}
+                                            defaultValue={user?.firstName || (user?.name ? user.name.split(" ")[0] : "")}
                                             placeholder="John"
                                         />
                                     </div>
@@ -154,6 +150,7 @@ const Contact: React.FC = () => {
                                             name="lastName"
                                             type="text"
                                             className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                                            defaultValue={user?.lastName || (user?.name && user.name.split(" ").length > 1 ? user.name.split(" ").slice(1).join(" ") : "")}
                                             placeholder="Doe"
                                         />
                                     </div>

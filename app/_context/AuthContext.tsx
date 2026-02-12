@@ -2,20 +2,26 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import api from "@/lib/api";
 
 interface User {
     id: string;
     name: string;
     email: string;
     role: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    createdAt?: string;
+    address?: string;
 }
 
 interface AuthContextType {
     user: User | null;
     login: (email: string, password: string) => Promise<void>;
-    signup: (name: string, email: string, password: string) => Promise<void>;
     logout: () => void;
     loading: boolean;
+    checkUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,10 +30,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
-    // Use relative path '/api' to leverage Next.js proxy (avoids CORS/Cookie issues)
-    // The previous env logic is replaced because we now proxy /api -> localhost:5000
-    const backendUrl = '/api';
-    const API_URL = `${backendUrl}/auth`;
+
+    const checkUser = async () => {
+        try {
+            const res = await api.get('/auth/me');
+            setUser(res.data);
+        } catch (error) {
+            console.log("No active session");
+            setUser(null);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         // Explicitly clear legacy localstorage items to satisfy user request
@@ -35,79 +49,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem("ddtec_token");
 
         // Check session cookie on mount via /me
-        const checkUser = async () => {
-            try {
-                const res = await fetch(`${API_URL}/me`, { credentials: 'include' });
-                if (res.ok) {
-                    const userData = await res.json();
-                    setUser(userData);
-                }
-            } catch (error) {
-                console.log("No active session");
-            } finally {
-                setLoading(false);
-            }
-        };
         checkUser();
     }, []);
 
     const login = async (email: string, password: string) => {
         try {
-            const res = await fetch(`${API_URL}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-            });
+            const res = await api.post('/auth/login', { email, password });
 
-            const data = await res.json();
+            setUser(res.data.user);
 
-            if (!res.ok) {
-                throw new Error(data.msg || 'Login failed');
-            }
-
-            setUser(data.user);
-
-            if (data.user.role === 'admin') {
+            if (res.data.user.role === 'admin') {
                 router.push("/admin");
             } else {
                 router.push("/");
             }
-        } catch (error) {
-            console.error("Login failed:", error);
-            throw error;
+        } catch (error: any) {
+            const msg = error.response?.data?.msg || 'Login failed';
+            console.error("Login failed:", msg);
+            throw new Error(msg);
         }
     };
 
-    const signup = async (name: string, email: string, password: string) => {
-        try {
-            const res = await fetch(`${API_URL}/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, password }),
-            });
 
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.msg || 'Signup failed');
-            }
-
-            setUser(data.user);
-
-            if (data.user.role === 'admin') {
-                router.push("/admin");
-            } else {
-                router.push("/");
-            }
-        } catch (error) {
-            console.error("Signup failed:", error);
-            throw error;
-        }
-    };
 
     const logout = async () => {
         try {
-            await fetch(`${API_URL}/logout`, { method: 'POST', credentials: 'include' });
+            await api.post('/auth/logout');
         } catch (error) {
             console.error("Logout error", error);
         } finally {
@@ -116,8 +83,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    // Signup logic is now handled directly in app/signup/page.tsx due to complexity (OTP, etc)
+    // We keep interface clean.
+
     return (
-        <AuthContext.Provider value={{ user, login, signup, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, loading, checkUser }}>
             {children}
         </AuthContext.Provider>
     );

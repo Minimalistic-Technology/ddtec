@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "../../_context/AuthContext";
 import { useCart } from "../../_context/CartContext";
-import { Loader2, Star, ShoppingBag, Truck, ShieldCheck, ArrowLeft, Tag, Layers, TrendingUp } from "lucide-react";
+import { Loader2, Star, ShoppingBag, Truck, ShieldCheck, ArrowLeft, Tag, Layers, TrendingUp, X, Maximize2, MessageCircle } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import api from "@/lib/api";
 
 interface Product {
     _id: string;
@@ -23,30 +25,60 @@ interface Product {
     modelName?: string;
     couponCode?: string;
     discountPercentage?: number;
+    images?: string[];
 }
 
 export default function ProductDetailsPage() {
     const { id } = useParams();
     const { addToCart } = useCart();
     const [product, setProduct] = useState<Product | null>(null);
+    const [selectedImage, setSelectedImage] = useState<string>("");
+    const [coupons, setCoupons] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const backendUrl = '/api';
+    const [isProductCouponActive, setIsProductCouponActive] = useState(false);
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
 
     useEffect(() => {
-        const fetchProduct = async () => {
+        const fetchData = async () => {
             try {
-                const res = await fetch(`${backendUrl}/products/${id}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setProduct(data);
+                const [productRes, couponsRes] = await Promise.all([
+                    api.get(`/products/${id}`),
+                    api.get('/coupons')
+                ]);
+
+                setProduct(productRes.data);
+                if (productRes.data.images && productRes.data.images.length > 0) {
+                    setSelectedImage(productRes.data.images[0]);
+                } else {
+                    setSelectedImage(productRes.data.image);
                 }
+
+                // Check if the product's assigned couponCode is active
+                const allCoupons = couponsRes.data;
+                const linkedCoupon = allCoupons.find((c: any) => c.code === productRes.data.couponCode);
+                setIsProductCouponActive(linkedCoupon ? linkedCoupon.isActive : true);
+
+                // Filter applicable coupons
+                const activeCoupons = allCoupons.filter((c: any) => {
+                    const isExpired = c.expiresAt && new Date(c.expiresAt) < new Date();
+                    return (
+                        c.type === 'product' &&
+                        c.isActive &&
+                        !isExpired &&
+                        c.applicableProducts &&
+                        c.applicableProducts.some((ap: any) => ap._id === id || ap === id)
+                    );
+                });
+                setCoupons(activeCoupons);
+
             } catch (error) {
-                console.error("Failed to fetch product", error);
+                console.error("Failed to fetch product or coupons", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchProduct();
+        fetchData();
     }, [id]);
 
     if (loading) {
@@ -77,21 +109,72 @@ export default function ProductDetailsPage() {
                 <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-700">
                     <div className="grid grid-cols-1 lg:grid-cols-2">
                         {/* Left: Image */}
-                        <div className="bg-slate-100 dark:bg-slate-900/50 p-8 flex items-center justify-center min-h-[400px] lg:min-h-[600px] relative group">
-                            {product.stock === 0 && (
-                                <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-900/50 z-10 flex items-center justify-center">
-                                    <span className="bg-red-600 text-white px-6 py-3 rounded-full font-bold text-xl tracking-wide transform rotate-[-12deg] shadow-2xl border-4 border-white/20 backdrop-blur-sm">
-                                        SOLD OUT
-                                    </span>
+                        {/* Left: Image Gallery */}
+                        <div className="bg-slate-100 dark:bg-slate-900/50 p-4 lg:p-8 flex gap-4 min-h-[400px] lg:min-h-[600px] relative group">
+                            {/* Thumbnails */}
+                            {(product.images && product.images.length > 0) ? (
+                                <div className="hidden lg:flex flex-col gap-4 w-20 overflow-y-auto">
+                                    {product.images.map((img, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setSelectedImage(img)}
+                                            className={`border-2 rounded-lg overflow-hidden transition-all ${selectedImage === img ? 'border-teal-600 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                        >
+                                            <img
+                                                src={img.startsWith('http') || img.startsWith('/') ? img : `/${img}`}
+                                                alt={`${product.name} ${idx + 1}`}
+                                                className="w-full h-20 object-contain bg-white dark:bg-slate-800"
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : null}
+
+                            {/* Main Image */}
+                            <div className="flex-1 flex items-center justify-center relative">
+                                {product.stock === 0 && (
+                                    <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-900/50 z-10 flex items-center justify-center">
+                                        <span className="bg-red-600 text-white px-6 py-3 rounded-full font-bold text-xl tracking-wide transform rotate-[-12deg] shadow-2xl border-4 border-white/20 backdrop-blur-sm">
+                                            SOLD OUT
+                                        </span>
+                                    </div>
+                                )}
+                                <motion.div
+                                    className="relative w-full h-full flex items-center justify-center cursor-zoom-in"
+                                    onClick={() => setIsLightboxOpen(true)}
+                                >
+                                    <motion.img
+                                        key={selectedImage}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        src={selectedImage ? (selectedImage.startsWith('http') || selectedImage.startsWith('/') ? selectedImage : `/${selectedImage}`) : (product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/${product.image}`)}
+                                        alt={product.name}
+                                        className={`w-full max-h-[500px] object-contain drop-shadow-2xl transition-all duration-500 ${product.stock === 0 ? 'grayscale opacity-75' : 'group-hover:scale-105'}`}
+                                    />
+                                    <div className="absolute top-4 right-4 bg-white/80 dark:bg-slate-800/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Maximize2 className="size-5 text-slate-700 dark:text-white" />
+                                    </div>
+                                </motion.div>
+                            </div>
+
+                            {/* Mobile Thumbnails (Bottom) */}
+                            {(product.images && product.images.length > 0) && (
+                                <div className="absolute bottom-4 left-0 right-0 flex lg:hidden justify-center gap-2 overflow-x-auto px-4">
+                                    {product.images.map((img, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setSelectedImage(img)}
+                                            className={`border-2 rounded-lg overflow-hidden flex-shrink-0 w-16 h-16 transition-all ${selectedImage === img ? 'border-teal-600 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                        >
+                                            <img
+                                                src={img.startsWith('http') || img.startsWith('/') ? img : `/${img}`}
+                                                alt={`${product.name} ${idx + 1}`}
+                                                className="w-full h-full object-contain bg-white dark:bg-slate-800"
+                                            />
+                                        </button>
+                                    ))}
                                 </div>
                             )}
-                            <motion.img
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                src={product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/${product.image}`}
-                                alt={product.name}
-                                className={`w-full max-h-[500px] object-contain drop-shadow-2xl transition-all duration-500 ${product.stock === 0 ? 'grayscale opacity-75' : 'group-hover:scale-105'}`}
-                            />
                         </div>
 
                         {/* Right: Info */}
@@ -147,43 +230,29 @@ export default function ProductDetailsPage() {
                                 )}
                             </div>
 
-                            {/* Price */}
-                            <div className="flex items-end gap-3 mb-8">
-                                <span className="text-4xl font-bold text-teal-600 dark:text-teal-400">
-                                    ₹{product.price.toLocaleString()}
-                                </span>
-                                {product.discountPercentage && product.discountPercentage > 0 && (
-                                    <span className="text-lg text-slate-400 line-through mb-1">
-                                        ₹{Math.round(product.price / (1 - product.discountPercentage / 100)).toLocaleString()}
+                            {/* Price & Coupon Count */}
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="flex items-end gap-3">
+                                    <span className="text-4xl font-bold text-teal-600 dark:text-teal-400">
+                                        ₹{product.price.toLocaleString()}
                                     </span>
+                                    {product.discountPercentage && product.discountPercentage > 0 && (
+                                        <span className="text-lg text-slate-400 line-through mb-1">
+                                            ₹{Math.round(product.price / (1 - product.discountPercentage / 100)).toLocaleString()}
+                                        </span>
+                                    )}
+                                </div>
+                                {coupons.length > 0 && (
+                                    <button
+                                        onClick={() => setIsCouponModalOpen(true)}
+                                        className="px-3 py-1 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 text-xs font-bold rounded-full border border-teal-100 dark:border-teal-800 flex items-center gap-1.5 self-center hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors cursor-pointer"
+                                    >
+                                        <Tag className="size-3" />
+                                        {coupons.length} {coupons.length === 1 ? 'coupon' : 'coupons'} available
+                                    </button>
                                 )}
                             </div>
 
-                            {/* Coupon Section */}
-                            {product.couponCode && product.discountPercentage && product.discountPercentage > 0 && (
-                                <div className="mb-8 p-4 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-2xl flex items-center justify-between group">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-10 rounded-xl bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                                            <Tag className="size-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">Available Offer</p>
-                                            <p className="text-sm text-slate-700 dark:text-slate-300">
-                                                Use <span className="font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">{product.couponCode}</span> to save {product.discountPercentage}%
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(product.couponCode || "");
-                                            alert("Coupon code copied!");
-                                        }}
-                                        className="px-4 py-2 bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 rounded-lg text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors"
-                                    >
-                                        Copy Code
-                                    </button>
-                                </div>
-                            )}
 
                             {/* Description */}
                             <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-100 dark:border-slate-700">
@@ -211,30 +280,195 @@ export default function ProductDetailsPage() {
                                 </div>
                             </div>
 
-                            <div className="mt-auto grid grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => addToCart(product._id)}
-                                    disabled={product.stock === 0}
-                                    className="py-4 rounded-xl font-bold border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-teal-600 hover:text-teal-600 dark:hover:border-teal-500 dark:hover:text-teal-400 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <ShoppingBag className="size-5" /> Add to Cart
-                                </button>
+                            <div className="mt-auto flex flex-col gap-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => addToCart(product._id)}
+                                        disabled={product.stock === 0}
+                                        className="py-4 rounded-xl font-bold border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-teal-600 hover:text-teal-600 dark:hover:border-teal-500 dark:hover:text-teal-400 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <ShoppingBag className="size-5" /> Add to Cart
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            addToCart(product._id);
+                                            // Ideally redirect to checkout, but cart is fine for now
+                                            window.location.href = '/cart';
+                                        }}
+                                        disabled={product.stock === 0}
+                                        className="py-4 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Buy Now
+                                    </button>
+                                </div>
+
                                 <button
                                     onClick={() => {
-                                        addToCart(product._id);
-                                        // Ideally redirect to checkout, but cart is fine for now
-                                        window.location.href = '/cart';
+                                        const text = `Check out this amazing product: ${product.name}\n\nPrice: ₹${product.price.toLocaleString()}\n\nView it here: ${window.location.href}`;
+                                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                                     }}
-                                    disabled={product.stock === 0}
-                                    className="py-4 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full py-4 bg-[#25D366] text-white rounded-xl font-bold hover:bg-[#128C7E] hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
                                 >
-                                    Buy Now
+                                    <MessageCircle className="size-5 group-hover:scale-110 transition-transform" /> Share on WhatsApp
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
+
+
+            {/* Lightbox Modal */}
+            <AnimatePresence>
+                {isLightboxOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+                        onClick={() => setIsLightboxOpen(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white dark:bg-slate-800 w-full max-w-6xl max-h-[90vh] rounded-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-3 shadow-2xl relative"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setIsLightboxOpen(false)}
+                                className="absolute top-4 right-4 z-10 p-2 bg-slate-100 dark:bg-slate-700 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                            >
+                                <X className="size-6 text-slate-900 dark:text-white" />
+                            </button>
+
+                            {/* Left: Main Image */}
+                            <div className="lg:col-span-2 bg-black flex items-center justify-center p-4 relative h-[50vh] lg:h-auto">
+                                <motion.img
+                                    key={selectedImage}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    src={selectedImage ? (selectedImage.startsWith('http') || selectedImage.startsWith('/') ? selectedImage : `/${selectedImage}`) : (product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/${product.image}`)}
+                                    alt={product.name}
+                                    className="max-w-full max-h-full object-contain"
+                                />
+                            </div>
+
+                            {/* Right: Info & Thumbnails */}
+                            <div className="p-6 lg:p-8 flex flex-col h-full overflow-y-auto">
+                                <div className="mb-6">
+                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2 leading-tight">{product.name}</h2>
+                                    {product.modelName && (
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">Model: {product.modelName}</p>
+                                    )}
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3">
+                                        {product.description}
+                                    </p>
+                                </div>
+
+                                <div className="flex-1">
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase mb-4">Gallery</h3>
+                                    <div className="grid grid-cols-4 gap-4">
+                                        {product.images && product.images.length > 0 ? (
+                                            product.images.map((img, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setSelectedImage(img)}
+                                                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${selectedImage === img ? 'border-teal-600 ring-2 ring-teal-600/20' : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600'}`}
+                                                >
+                                                    <img
+                                                        src={img.startsWith('http') || img.startsWith('/') ? img : `/${img}`}
+                                                        alt={`${product.name} ${idx}`}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <button
+                                                className={`aspect-square rounded-lg overflow-hidden border-2 border-teal-600 ring-2 ring-teal-600/20`}
+                                            >
+                                                <img
+                                                    src={product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/${product.image}`}
+                                                    alt={product.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* View Coupons Modal */}
+            <AnimatePresence>
+                {isCouponModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-700"
+                        >
+                            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Available Coupons</h3>
+                                <button onClick={() => setIsCouponModalOpen(false)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                    <X className="size-6" />
+                                </button>
+                            </div>
+                            <div className="p-6 max-h-[60vh] overflow-y-auto">
+                                <div className="space-y-4">
+                                    {coupons.map((coupon: any) => (
+                                        <div key={coupon._id} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <span className="text-lg font-bold text-teal-600 dark:text-teal-400 block">{coupon.code}</span>
+                                                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                                                        Discount: {coupon.discountType === 'fixed' ? '₹' : ''}{coupon.discountValue}{coupon.discountType === 'percentage' ? '%' : ''} off
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(coupon.code || "");
+                                                        alert("Coupon code copied!");
+                                                    }}
+                                                    className="px-3 py-1 bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 rounded-lg text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors"
+                                                >
+                                                    Copy
+                                                </button>
+                                            </div>
+                                            {coupon.description && (
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{coupon.description}</p>
+                                            )}
+                                            {coupon.minOrderValue > 0 && (
+                                                <div className="text-xs text-slate-400 mt-2">
+                                                    Min Order: ₹{coupon.minOrderValue}
+                                                </div>
+                                            )}
+                                            {coupon.expiresAt && (
+                                                <div className="text-xs text-slate-400 mt-1">
+                                                    Expires: {new Date(coupon.expiresAt).toLocaleDateString()}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="p-6 border-t border-slate-100 dark:border-slate-700">
+                                <button
+                                    onClick={() => setIsCouponModalOpen(false)}
+                                    className="w-full px-4 py-2 rounded-xl font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </section >
     );
 }

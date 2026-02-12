@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Hero from "./_components/Hero";
 import WhatWeOffer from "./_components/WhatWeOffer";
 import WhoWeAre from "./_components/WhoWeAre";
@@ -10,7 +11,9 @@ export default function HomePage() {
       <Hero />
       <WhoWeAre />
       <WhatWeOffer />
-      <ShopSection />
+      <Suspense fallback={<div>Loading products...</div>}>
+        <ShopSection />
+      </Suspense>
       <Contact />
     </main>
   );
