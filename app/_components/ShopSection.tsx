@@ -2,12 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { HardHat, Bell, Plus, X, Image as ImageIcon, Tag, DollarSign, Loader2, ShoppingBag, Search, Filter, Star, TrendingUp, Layers } from "lucide-react";
+import { HardHat, Bell, Plus, X, Image as ImageIcon, Tag, DollarSign, Loader2, ShoppingBag, Search, Filter, Star, TrendingUp, Layers, ChevronDown, ChevronRight } from "lucide-react";
 import { useAuth } from "../_context/AuthContext";
 import { useCart } from "../_context/CartContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+
+interface Category {
+    _id: string;
+    name: string;
+    slug: string;
+    parent?: string;
+}
 
 interface Product {
     _id: string;
@@ -15,7 +22,7 @@ interface Product {
     description: string;
     price: number;
     image: string;
-    category: string;
+    category: any; // Can be string or populated object
     stock: number;
     rating: number;
     numReviews: number;
@@ -24,18 +31,112 @@ interface Product {
     modelName?: string;
 }
 
+// Helper to get all descendant category IDs (recursive)
+const getCategoryDescendants = (categoryId: string, allCategories: Category[]): string[] => {
+    const children = allCategories.filter(c => c.parent === categoryId || (c.parent as any)?._id === categoryId);
+    let ids = [categoryId];
+    children.forEach(child => {
+        ids = [...ids, ...getCategoryDescendants(child._id, allCategories)];
+    });
+    return ids;
+};
+
+// Recursive Sidebar Item
+const SidebarCategoryItem = ({
+    category,
+    allCategories,
+    selectedCategory,
+    onSelect,
+    depth = 0
+}: {
+    category: Category,
+    allCategories: Category[],
+    selectedCategory: string,
+    onSelect: (id: string) => void,
+    depth?: number
+}) => {
+    const children = allCategories.filter(c => c.parent === category._id || (c.parent as any)?._id === category._id);
+    const isSelected = selectedCategory === (category.slug || category._id) || selectedCategory === category._id;
+
+    // Auto-expand if selected category is a descendant
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    // Effect to auto-expand if a child is selected
+    useEffect(() => {
+        if (isSelected) {
+            setIsExpanded(true);
+        } else {
+            // Check if any descendant is selected
+            const descendants = getCategoryDescendants(category._id, allCategories);
+            if (descendants.some(id => id === selectedCategory || allCategories.find(c => c._id === id)?.slug === selectedCategory)) {
+                setIsExpanded(true);
+            }
+        }
+    }, [selectedCategory, category._id, allCategories, isSelected]);
+
+    const handleToggle = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsExpanded(!isExpanded);
+    };
+
+    return (
+        <div className="flex flex-col">
+            <div className={`flex items-center justify-between w-full rounded-lg transition-colors ${isSelected
+                    ? "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+            >
+                <button
+                    onClick={() => onSelect(category.slug || category._id)}
+                    className="flex-1 text-left px-3 py-1.5 text-sm font-medium truncate"
+                    style={{ paddingLeft: `${depth * 12 + 12}px` }}
+                >
+                    {category.name}
+                </button>
+                {children.length > 0 && (
+                    <button
+                        onClick={handleToggle}
+                        className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md mr-1"
+                    >
+                        {isExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+                    </button>
+                )}
+            </div>
+
+            {children.length > 0 && isExpanded && (
+                <div className="flex flex-col mt-0.5 animate-in slide-in-from-top-2 duration-200">
+                    {children.map(child => (
+                        <SidebarCategoryItem
+                            key={child._id}
+                            category={child}
+                            allCategories={allCategories}
+                            selectedCategory={selectedCategory}
+                            onSelect={onSelect}
+                            depth={depth + 1}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function ShopSection() {
     const { user } = useAuth();
     const { addToCart } = useCart();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const initialCategory = searchParams.get('category') || "All";
+
     const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Filters & Sort State
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("All");
+    const [selectedCategory, setSelectedCategory] = useState(initialCategory);
     const [sortOption, setSortOption] = useState("default");
 
     // Form State
@@ -49,22 +150,45 @@ export default function ShopSection() {
         rating: "",
         lastMonthSales: "",
         brand: "",
-        modelName: ""
+        modelName: "",
+        couponCode: "",
+        discountPercentage: ""
     });
 
+
+    const fetchProducts = async () => {
+        try {
+            const [productsRes, categoriesRes] = await Promise.all([
+                api.get('/products'),
+                api.get('/categories')
+            ]);
+            setProducts(productsRes.data);
+            setCategories(categoriesRes.data);
+        } catch (error) {
+            console.error("Failed to fetch data", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchProducts();
     }, []);
 
-    const fetchProducts = async () => {
-        try {
-            const res = await api.get('/products');
-            setProducts(res.data);
-        } catch (error) {
-            console.error("Failed to fetch products", error);
-        } finally {
-            setLoading(false);
+    // Update selectedCategory when URL changes
+    useEffect(() => {
+        const categoryParam = searchParams.get('category');
+        if (categoryParam) {
+            setSelectedCategory(categoryParam);
+        }
+    }, [searchParams]);
+
+    const handleCategoryChange = (categoryId: string) => {
+        setSelectedCategory(categoryId);
+        if (categoryId === "All") {
+            router.push('/shop');
+        } else {
+            router.push(`/shop?category=${categoryId}`);
         }
     };
 
@@ -77,7 +201,21 @@ export default function ShopSection() {
         .filter(product => {
             const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 product.description.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesCategory = selectedCategory === "All" || product.category === selectedCategory;
+
+            let matchesCategory = true;
+            if (selectedCategory !== "All") {
+                // Resolve selectedCategory (which might be a slug) to an ID
+                const targetCategory = categories.find(c => c.slug === selectedCategory || c._id === selectedCategory);
+                const targetId = targetCategory ? targetCategory._id : selectedCategory;
+
+                // Get all relevant category IDs (selected + all descendants)
+                const relevantCategoryIds = getCategoryDescendants(targetId, categories);
+
+                const productCatId = typeof product.category === 'object' ? product.category._id : product.category;
+
+                // Match if product belongs to any of the relevant categories
+                matchesCategory = relevantCategoryIds.includes(productCatId);
+            }
 
             return matchesSearch && matchesCategory;
         })
@@ -98,13 +236,15 @@ export default function ShopSection() {
                 rating: Number(newProduct.rating) || 0,
                 lastMonthSales: Number(newProduct.lastMonthSales) || 0,
                 brand: newProduct.brand,
-                modelName: newProduct.modelName
+                modelName: newProduct.modelName,
+                couponCode: newProduct.couponCode || undefined,
+                discountPercentage: Number(newProduct.discountPercentage) || 0
             });
 
             if (res.status === 200 || res.status === 201) {
                 fetchProducts();
                 setIsModalOpen(false);
-                setNewProduct({ name: "", price: "", description: "", image: "", category: "", stock: "", rating: "", lastMonthSales: "", brand: "", modelName: "" });
+                setNewProduct({ name: "", price: "", description: "", image: "", category: "", stock: "", rating: "", lastMonthSales: "", brand: "", modelName: "", couponCode: "", discountPercentage: "" });
             }
         } catch (error: any) {
             console.error("Failed to add product", error);
@@ -143,21 +283,10 @@ export default function ShopSection() {
                             />
                         </div>
 
-                        {/* Filter Dropdown */}
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                className="w-full md:w-48 pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none appearance-none cursor-pointer"
-                            >
-                                <option value="All">All Categories</option>
-                                <option value="Drill Bits">Drill Bits</option>
-                                <option value="Wood Cutter">Wood Cutter</option>
-                                <option value="Grinding Tools">Grinding Tools</option>
-                                <option value="Fasteners">Fasteners</option>
-                            </select>
-                        </div>
+                        {/* Filter Dropdown - HIDDEN on Desktop (moved to sidebar), visible on mobile if needed or just rely on sidebar */}
+                        {/* <div className="relative md:hidden">
+                           ... mobile filter could go here ...
+                        </div> */}
 
                         {/* Sort Dropdown */}
                         <div className="relative">
@@ -183,139 +312,156 @@ export default function ShopSection() {
                     </div>
                 </div>
 
-                {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin text-teal-600"><Loader2 className="size-10" /></div>
-                    </div>
-                ) : filteredProducts.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredProducts.map((product) => (
-                            <motion.div
-                                key={product._id}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.4 }}
-                                className={`group relative bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-2xl hover:shadow-teal-500/10 hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden ${product.stock === 0 ? 'opacity-75 grayscale' : ''}`}
-                            >
-                                {/* Image Container */}
-                                <div className="relative h-48 sm:h-52 overflow-hidden bg-slate-100 dark:bg-slate-800 p-4">
-                                    {product.image ? (
-                                        <img
-                                            src={product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/${product.image}`}
-                                            alt={product.name}
-                                            className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-600">
-                                            <ImageIcon className="size-10" />
-                                        </div>
-                                    )}
-
-                                    {/* Price Badge */}
-                                    <div className="absolute top-2 right-2 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md px-2.5 py-1 rounded-full shadow-lg border border-slate-100 dark:border-slate-800 z-10 hover:scale-105 transition-transform">
-                                        <span className="text-teal-600 font-bold text-xs sm:text-sm">₹{product.price}</span>
-                                    </div>
-
-                                    {/* Sales Badges */}
-                                    <div className="absolute top-2 left-2 flex flex-col gap-2 z-10">
-                                        {product.lastMonthSales > 50 && (
-                                            <div className="bg-teal-600 text-white px-2.5 py-1 rounded-full text-[10px] font-bold shadow-lg flex items-center gap-1 border border-teal-400/30">
-                                                <Star className="size-3 fill-current" />
-                                                BESTSELLER
-                                            </div>
-                                        )}
-                                        {product.lastMonthSales > 0 && (
-                                            <div className="bg-amber-100/90 dark:bg-amber-900/90 backdrop-blur-md px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 border border-amber-200/50 dark:border-amber-700/50">
-                                                <TrendingUp className="size-3 text-amber-600 dark:text-amber-400" />
-                                                <span className="text-[10px] sm:text-xs font-bold text-amber-700 dark:text-amber-300">
-                                                    {product.lastMonthSales} sold last month
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Overlay Actions (Desktop) */}
-                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
-                                        <Link
-                                            href={`/product/${product._id}`}
-                                            className="size-10 bg-white text-slate-700 rounded-full flex items-center justify-center shadow-xl hover:bg-teal-50 hover:text-teal-600 hover:scale-110 transition-all transform translate-y-4 group-hover:translate-y-0 duration-300"
-                                            title="View Details"
-                                        >
-                                            <Search className="size-5" />
-                                        </Link>
-                                    </div>
-                                </div>
-
-                                {/* Content */}
-                                <div className="p-4 flex flex-col flex-1">
-                                    <div className="mb-1">
-                                        <Link href={`/product/${product._id}`} className="block group-hover:text-teal-600 transition-colors">
-                                            <h3 className="font-bold text-slate-900 dark:text-white text-base sm:text-lg line-clamp-1" title={product.name}>
-                                                {product.name}
-                                            </h3>
-                                        </Link>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 mb-2.5">
-                                        <div className="flex items-center text-amber-400">
-                                            <Star className="size-3.5 fill-current" />
-                                            <span className="ml-1 text-xs font-bold text-slate-700 dark:text-slate-300">{product.rating || 0}</span>
-                                        </div>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">• ({product.numReviews || 0})</span>
-                                        {product.brand && (
-                                            <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded uppercase">
-                                                {product.brand}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 flex-1">
-                                        {product.description}
-                                    </p>
-
-                                    <div className="grid grid-cols-2 gap-2 mt-auto">
-                                        <button
-                                            disabled={product.stock === 0}
-                                            onClick={() => addToCart(product._id)}
-                                            className="group/btn py-2 px-3 rounded-lg font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:text-teal-600 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-                                        >
-                                            <ShoppingBag className="size-3.5" /> Add
-                                        </button>
-                                        <button
-                                            disabled={product.stock === 0}
-                                            onClick={() => handleBuyNow(product._id)}
-                                            className="py-2 px-3 rounded-lg font-bold text-xs bg-teal-600 text-white shadow-md hover:bg-teal-700 transition-all flex items-center justify-center disabled:opacity-50"
-                                        >
-                                            Buy Now
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                ) : (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="text-center py-20"
-                    >
-                        <div className="mb-8 inline-flex p-6 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-600 dark:text-yellow-500">
-                            <HardHat className="size-16" />
+                <div className="flex flex-col lg:flex-row gap-8">
+                    {/* Sidebar Filters */}
+                    <aside className="w-full lg:w-64 flex-shrink-0 space-y-8">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Filter className="size-5 text-teal-600" />
+                                <h3 className="font-bold text-slate-900 dark:text-white">Categories</h3>
+                            </div>
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => handleCategoryChange("All")}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === "All"
+                                        ? "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400"
+                                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                        }`}
+                                >
+                                    All Products
+                                </button>
+                                {categories.filter(c => !c.parent).map(category => (
+                                    <SidebarCategoryItem
+                                        key={category._id}
+                                        category={category}
+                                        allCategories={categories}
+                                        selectedCategory={selectedCategory}
+                                        onSelect={handleCategoryChange}
+                                    />
+                                ))}
+                            </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">No Products Found</h3>
-                        <p className="text-slate-600 dark:text-slate-400">Try adjusting your search or filters.</p>
-                        {(searchQuery || selectedCategory !== "All") && (
-                            <button
-                                onClick={() => { setSearchQuery(""); setSelectedCategory("All"); }}
-                                className="mt-6 text-teal-600 font-bold hover:underline"
+                    </aside>
+
+                    {/* Product Grid */}
+                    <main className="flex-1">
+                        {loading ? (
+                            <div className="flex justify-center items-center h-64">
+                                <div className="animate-spin text-teal-600"><Loader2 className="size-10" /></div>
+                            </div>
+                        ) : filteredProducts.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredProducts.map((product) => (
+                                    <motion.div
+                                        key={product._id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ duration: 0.4 }}
+                                        className={`group relative bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-teal-500/10 hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden ${product.stock === 0 ? 'opacity-75 grayscale' : ''}`}
+                                    >
+                                        {/* Image Container */}
+                                        <div className="relative h-48 sm:h-52 overflow-hidden bg-slate-100 dark:bg-slate-800 p-4">
+                                            {product.image ? (
+                                                <img
+                                                    src={product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/${product.image}`}
+                                                    alt={product.name}
+                                                    className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-600">
+                                                    <ImageIcon className="size-10" />
+                                                </div>
+                                            )}
+
+                                            {/* Price Badge */}
+                                            <div className="absolute top-2 right-2 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md px-2.5 py-1 rounded-full shadow-lg border border-slate-100 dark:border-slate-800 z-10 hover:scale-105 transition-transform">
+                                                <span className="text-teal-600 font-bold text-xs sm:text-sm">₹{product.price}</span>
+                                            </div>
+
+                                            {/* Sales Badges */}
+                                            <div className="absolute top-2 left-2 flex flex-col gap-2 z-10">
+                                                {product.lastMonthSales > 50 && (
+                                                    <div className="bg-teal-600 text-white px-2.5 py-1 rounded-full text-[10px] font-bold shadow-lg flex items-center gap-1 border border-teal-400/30">
+                                                        <Star className="size-3 fill-current" />
+                                                        BESTSELLER
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Overlay Actions (Desktop) */}
+                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
+                                                <Link
+                                                    href={`/product/${product._id}`}
+                                                    className="size-10 bg-white text-slate-700 rounded-full flex items-center justify-center shadow-xl hover:bg-teal-50 hover:text-teal-600 hover:scale-110 transition-all transform translate-y-4 group-hover:translate-y-0 duration-300"
+                                                    title="View Details"
+                                                >
+                                                    <Search className="size-5" />
+                                                </Link>
+                                            </div>
+                                        </div>
+
+                                        {/* Content */}
+                                        <div className="p-4 flex flex-col flex-1">
+                                            <div className="mb-1">
+                                                <Link href={`/product/${product._id}`} className="block group-hover:text-teal-600 transition-colors">
+                                                    <h3 className="font-bold text-slate-900 dark:text-white text-base sm:text-lg line-clamp-1" title={product.name}>
+                                                        {product.name}
+                                                    </h3>
+                                                </Link>
+                                            </div>
+
+                                            <div className="flex items-center gap-1.5 mb-2.5">
+                                                <div className="flex items-center text-amber-400">
+                                                    <Star className="size-3.5 fill-current" />
+                                                    <span className="ml-1 text-xs font-bold text-slate-700 dark:text-slate-300">{product.rating || 0}</span>
+                                                </div>
+                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">• ({product.numReviews || 0})</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2 mt-auto">
+                                                <button
+                                                    disabled={product.stock === 0}
+                                                    onClick={() => addToCart(product._id)}
+                                                    className="group/btn py-2 px-3 rounded-lg font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:text-teal-600 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                                >
+                                                    <ShoppingBag className="size-3.5" /> Add
+                                                </button>
+                                                <button
+                                                    disabled={product.stock === 0}
+                                                    onClick={() => handleBuyNow(product._id)}
+                                                    className="py-2 px-3 rounded-lg font-bold text-xs bg-teal-600 text-white shadow-md hover:bg-teal-700 transition-all flex items-center justify-center disabled:opacity-50"
+                                                >
+                                                    Buy Now
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        ) : (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="text-center py-20"
                             >
-                                Clear all filters
-                            </button>
+                                <div className="mb-8 inline-flex p-6 bg-yellow-100 dark:bg-yellow-900/30 rounded-full text-yellow-600 dark:text-yellow-500">
+                                    <HardHat className="size-16" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">No Products Found</h3>
+                                <p className="text-slate-600 dark:text-slate-400">Try adjusting your search or filters.</p>
+                                {(searchQuery || selectedCategory !== "All") && (
+                                    <button
+                                        onClick={() => { setSearchQuery(""); handleCategoryChange("All"); }}
+                                        className="mt-6 text-teal-600 font-bold hover:underline"
+                                    >
+                                        Clear all filters
+                                    </button>
+                                )}
+                            </motion.div>
                         )}
-                    </motion.div>
-                )
-                }
+                    </main>
+                </div>
             </div>
 
             {/* Add Product Modal */}
@@ -403,6 +549,29 @@ export default function ShopSection() {
                                                     onChange={(e) => setNewProduct({ ...newProduct, lastMonthSales: e.target.value })}
                                                     className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
                                                     placeholder="e.g. 120"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Coupon Code</label>
+                                                <input
+                                                    type="text"
+                                                    value={newProduct.couponCode}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, couponCode: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="e.g. SAVE10"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Discount (%)</label>
+                                                <input
+                                                    type="number"
+                                                    value={newProduct.discountPercentage}
+                                                    onChange={(e) => setNewProduct({ ...newProduct, discountPercentage: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                    placeholder="10"
                                                 />
                                             </div>
                                         </div>
