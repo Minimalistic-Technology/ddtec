@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${poppins.variable} min-h-screen flex flex-col font-poppins`}>
+      <body className={`${poppins.variable} min-h-screen flex flex-col font-poppins`} suppressHydrationWarning>
         <ThemeProvider>
           <AuthProvider>
             <CartProvider>
