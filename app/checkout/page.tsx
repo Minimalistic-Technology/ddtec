@@ -51,6 +51,8 @@ export default function CheckoutPage() {
 
     const [paymentMethod, setPaymentMethod] = useState("card");
     const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+    const [couponInput, setCouponInput] = useState("");
+    const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -756,9 +758,45 @@ export default function CheckoutPage() {
                             </div>
                         )}
 
+                        {!appliedCoupon && (
+                            <div className="mb-6">
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Have a coupon?</h4>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4" />
+                                        <input
+                                            type="text"
+                                            value={couponInput}
+                                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                                            placeholder="Enter Code"
+                                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:ring-2 focus:ring-teal-500 outline-none"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (!couponInput) return;
+                                            setIsApplyingCoupon(true);
+                                            const result = await applyCoupon(couponInput);
+                                            if (result.success) {
+                                                showToast("Coupon Applied Successfully!", "success");
+                                                setCouponInput("");
+                                            } else {
+                                                showToast(result.message, "error");
+                                            }
+                                            setIsApplyingCoupon(false);
+                                        }}
+                                        disabled={isApplyingCoupon || !couponInput}
+                                        className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 rounded-lg text-sm font-bold disabled:opacity-50"
+                                    >
+                                        {isApplyingCoupon ? <Loader2 className="animate-spin size-4" /> : "Apply"}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {!appliedCoupon && availableCoupons.length > 0 && (
                             <div className="mb-6">
-                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Available Coupons</h4>
+                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Available Offers</h4>
                                 <div className="space-y-2">
                                     {availableCoupons.map(coupon => (
                                         <div key={coupon._id} className="p-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 rounded-lg flex items-center justify-between">
@@ -777,7 +815,7 @@ export default function CheckoutPage() {
                                                     if (result.success) {
                                                         showToast("Coupon Applied Successfully!", "success");
                                                     } else {
-                                                        showToast(result.message, "error"); // Show error reason (e.g., "Min order value not met")
+                                                        showToast(result.message, "error");
                                                     }
                                                 }}
                                                 className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-teal-50 transition-colors"

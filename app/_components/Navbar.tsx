@@ -8,11 +8,62 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Sun, Moon, ShoppingBag, ChevronRight, User, LogOut, ChevronDown, Package, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LoadingBar from "./LoadingBar";
+import api from "@/lib/api";
 import { useAuth } from "../_context/AuthContext";
 import { useCart } from "../_context/CartContext";
 
+// Helper component for recursive category rendering
+const CategoryItem = ({ category, allCategories, depth = 0 }: { category: any, allCategories: any[], depth?: number }) => {
+  const children = allCategories.filter(c => c.parent && (c.parent._id === category._id || c.parent === category._id));
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsExpanded(!isExpanded);
+  };
+
+  return (
+    <div className="flex flex-col">
+      <div className={cn(
+        "flex items-center justify-between pr-2 transition-colors",
+        depth === 0 ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
+      )}>
+        <Link
+          href={`/shop?category=${category.slug || category._id}`}
+          className={cn(
+            "block py-1.5 text-sm transition-colors hover:text-teal-600 dark:hover:text-teal-400 truncate flex-1",
+            depth === 0
+              ? "font-bold text-slate-800 dark:text-slate-100 px-4 py-2"
+              : "text-slate-600 dark:text-slate-400 border-l-2 border-transparent hover:border-teal-100"
+          )}
+          style={{ paddingLeft: depth > 0 ? `${depth * 12 + 16}px` : undefined }}
+        >
+          {category.name}
+        </Link>
+        {children.length > 0 && (
+          <button
+            onClick={handleToggle}
+            className="p-1 rounded-md text-slate-400 hover:text-teal-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+          >
+            {isExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+          </button>
+        )}
+      </div>
+      {children.length > 0 && isExpanded && (
+        <div className="flex flex-col">
+          {children.map(child => (
+            <CategoryItem key={child._id} category={child} allCategories={allCategories} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
+  // ... existing hooks
   const { user, logout } = useAuth();
   const { cartCount } = useCart(); // Cart Context Hook
   const [mounted, setMounted] = useState(false);
@@ -20,6 +71,8 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [currentHash, setCurrentHash] = useState("");
+  const [categories, setCategories] = useState<any[]>([]);
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -34,6 +87,18 @@ export default function Navbar() {
       setScrolled(window.scrollY > 20);
     };
     window.addEventListener("scroll", handleScroll);
+
+    const fetchCategories = async () => {
+      try {
+        const { data } = await api.get('/categories');
+        console.log("Navbar: Fetched categories:", data);
+        setCategories(data);
+      } catch (error) {
+        console.error("Navbar: Failed to fetch categories", error);
+      }
+    };
+    fetchCategories();
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -66,6 +131,7 @@ export default function Navbar() {
     { name: "Shop", href: "/shop" },
     { name: "Who we are", href: "/who" },
     { name: "What we offer", href: "/what" },
+    { name: "Blog", href: "/blogs" },
     { name: "Contact", href: "/contact" },
     ...(user && user.role === 'admin' ? [{ name: "Dashboard", href: "/admin" }] : [])
   ];
@@ -171,28 +237,59 @@ export default function Navbar() {
 
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
-              <Link
+              <div
                 key={link.href}
-                href={link.href}
-                onClick={(e) => handleNavClick(e, link.href)}
-                className={cn(
-                  "relative px-4 py-2 rounded-full text-sm font-medium transition-colors hover:text-teal-600 dark:hover:text-teal-400",
-                  isActive(link.href)
-                    ? "text-teal-600 dark:text-teal-400"
-                    : scrolled
-                      ? "text-slate-600 dark:text-slate-300"
-                      : "text-slate-700 dark:text-slate-200 hover:text-teal-600"
-                )}
+                className="relative"
+                onMouseEnter={() => { console.log("Hovering:", link.name); setHoveredLink(link.name); }}
+                onMouseLeave={() => setHoveredLink(null)}
               >
-                {isActive(link.href) && (
-                  <motion.div
-                    layoutId="navbar-pill"
-                    className="absolute inset-0 bg-teal-50/50 dark:bg-teal-900/20 rounded-full -z-10"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                {link.name}
-              </Link>
+                <Link
+                  href={link.href}
+                  onClick={(e) => handleNavClick(e, link.href)}
+                  className={cn(
+                    "relative px-4 py-2 rounded-full text-sm font-medium transition-colors hover:text-teal-600 dark:hover:text-teal-400 block",
+                    isActive(link.href)
+                      ? "text-teal-600 dark:text-teal-400"
+                      : scrolled
+                        ? "text-slate-600 dark:text-slate-300"
+                        : "text-slate-700 dark:text-slate-200 hover:text-teal-600"
+                  )}
+                >
+                  {isActive(link.href) && (
+                    <motion.div
+                      layoutId="navbar-pill"
+                      className="absolute inset-0 bg-teal-50/50 dark:bg-teal-900/20 rounded-full -z-10"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  {link.name}
+                </Link>
+
+                {/* Shop Dropdown */}
+                <AnimatePresence>
+                  {link.name === "Shop" && hoveredLink === "Shop" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 py-3 overflow-hidden z-50"
+                    >
+                      {categories.length > 0 ? (
+                        <div className="max-h-[60vh] overflow-y-auto">
+                          {categories
+                            .filter(cat => !cat.parent) // Top-level categories
+                            .map((parent) => (
+                              <CategoryItem key={parent._id} category={parent} allCategories={categories} depth={0} />
+                            ))}
+                        </div>
+                      ) : (
+                        <div className="px-4 py-2.5 text-sm text-slate-500 italic">No categories found</div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             ))}
           </div>
 
