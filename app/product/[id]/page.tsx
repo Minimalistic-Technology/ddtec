@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "../../_context/AuthContext";
 import { useCart } from "../../_context/CartContext";
 import { Loader2, Star, ShoppingBag, Truck, ShieldCheck, ArrowLeft, Tag, Layers, TrendingUp, X, Maximize2, MessageCircle } from "lucide-react";
@@ -16,7 +16,7 @@ interface Product {
     description: string;
     price: number;
     image: string;
-    category: string;
+    category: string | { _id: string; name: string };
     stock: number;
     rating: number;
     numReviews: number;
@@ -30,6 +30,7 @@ interface Product {
 
 export default function ProductDetailsPage() {
     const { id } = useParams();
+    const router = useRouter();
     const { addToCart } = useCart();
     const [product, setProduct] = useState<Product | null>(null);
     const [selectedImage, setSelectedImage] = useState<string>("");
@@ -182,7 +183,7 @@ export default function ProductDetailsPage() {
                             {/* Brand & Category */}
                             <div className="flex items-center gap-3 mb-4">
                                 <span className="px-3 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-xs font-bold uppercase tracking-wider rounded-lg">
-                                    {product.category}
+                                    {typeof product.category === 'object' ? product.category.name : product.category}
                                 </span>
                                 {product.brand && (
                                     <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center gap-1">
@@ -290,10 +291,9 @@ export default function ProductDetailsPage() {
                                         <ShoppingBag className="size-5" /> Add to Cart
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            addToCart(product._id);
-                                            // Ideally redirect to checkout, but cart is fine for now
-                                            window.location.href = '/cart';
+                                        onClick={async () => {
+                                            await addToCart(product._id);
+                                            router.push('/cart');
                                         }}
                                         disabled={product.stock === 0}
                                         className="py-4 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
