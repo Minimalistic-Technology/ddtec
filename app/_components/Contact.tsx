@@ -25,10 +25,12 @@ const Contact: React.FC = () => {
         };
 
         try {
+            console.log("[CONTACT] Submitting form...", data);
             const response = await api.post('/contact', {
                 ...data,
                 userId: user?.id
             });
+            console.log("[CONTACT] Submission Response:", response.data);
 
             if (response.status === 200 || response.status === 201) {
                 setFormState("success");
