@@ -36,7 +36,7 @@ const WhoWeAre: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: false }}
+              viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-sm font-bold tracking-wider text-teal-600 uppercase mb-2">
@@ -57,7 +57,7 @@ const WhoWeAre: React.FC = () => {
                     key={index}
                     initial={{ opacity: 0, y: 10 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: false }}
+                    viewport={{ once: true }}
                     transition={{ delay: index * 0.1, duration: 0.5 }}
                     className="flex gap-4 items-start"
                   >
@@ -83,7 +83,7 @@ const WhoWeAre: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: false }}
+              viewport={{ once: true }}
               transition={{ duration: 0.6 }}
               className="relative"
             >
