@@ -58,7 +58,7 @@ const Contact: React.FC = () => {
                         <motion.h2
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: false }}
+                            viewport={{ once: true }}
                             className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4"
                         >
                             Get in Touch
@@ -73,7 +73,7 @@ const Contact: React.FC = () => {
                         <motion.div
                             initial={{ opacity: 0, x: -30 }}
                             whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: false }}
+                            viewport={{ once: true }}
                             transition={{ duration: 0.6 }}
                             className="bg-slate-900 text-white p-8 md:p-12 rounded-3xl shadow-2xl relative overflow-hidden"
                         >
@@ -128,7 +128,7 @@ const Contact: React.FC = () => {
                         <motion.div
                             initial={{ opacity: 0, x: 30 }}
                             whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: false }}
+                            viewport={{ once: true }}
                             transition={{ duration: 0.6 }}
                             className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-lg border border-slate-100 dark:border-slate-700"
                         >
@@ -201,9 +201,9 @@ const Contact: React.FC = () => {
                             </form>
                         </motion.div>
                     </div>
-                </div>
-            </div>
-        </section>
+                </div >
+            </div >
+        </section >
     );
 };
 

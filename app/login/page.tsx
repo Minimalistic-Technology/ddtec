@@ -33,9 +33,10 @@ const LoginForm = () => {
         e.preventDefault();
         setIsLoading(true);
 
+        const trimmedIdentifier = identifier.trim();
         try {
             // 1. Check if user exists in DDTEC website
-            const res = await api.post('/auth/check-user', { identifier });
+            const res = await api.post('/auth/check-user', { identifier: trimmedIdentifier });
 
             if (res.data.exists) {
                 // EXITS ON WEBSITE -> Ask for password
@@ -44,7 +45,7 @@ const LoginForm = () => {
                 // NOT ON WEBSITE -> Try to send OTP for Signup
                 // This call will fail if the email is "fake" (disposable domains)
                 try {
-                    await api.post('/auth/send-otp', { identifier });
+                    await api.post('/auth/send-otp', { identifier: trimmedIdentifier });
                     setStep("otp");
                     showToast(`New account! Verification code sent to ${identifier}`, "success");
                 } catch (otpErr: any) {

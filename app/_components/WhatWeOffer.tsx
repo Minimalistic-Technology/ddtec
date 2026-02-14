@@ -65,7 +65,7 @@ const WhatWeOffer: React.FC = () => {
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: false }}
+            viewport={{ once: true }}
             className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4"
           >
             What We Offer
@@ -73,7 +73,7 @@ const WhatWeOffer: React.FC = () => {
           <motion.p
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            viewport={{ once: false }}
+            viewport={{ once: true }}
             transition={{ delay: 0.2 }}
             className="text-slate-600 dark:text-slate-400 text-lg"
           >
@@ -87,7 +87,7 @@ const WhatWeOffer: React.FC = () => {
               key={tool.title}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false }}
+              viewport={{ once: true }}
               transition={{ delay: index * 0.1, duration: 0.5 }}
               whileHover={{ y: -8 }}
               className="group relative bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden"
@@ -116,8 +116,8 @@ const WhatWeOffer: React.FC = () => {
             </motion.div>
           ))}
         </div>
-      </div>
-    </section>
+      </div >
+    </section >
   );
 };
 
