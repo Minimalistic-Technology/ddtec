@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Send, MessageSquare } from "lucide-react";
 import { useAuth } from "../_context/AuthContext";
-import axios from "axios";
+import api from "@/lib/api";
 
 const Contact: React.FC = () => {
     const { user } = useAuth();
@@ -25,7 +25,7 @@ const Contact: React.FC = () => {
         };
 
         try {
-            const response = await axios.post('/api/contact', {
+            const response = await api.post('/contact', {
                 ...data,
                 userId: user?.id
             });
