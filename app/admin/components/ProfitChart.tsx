@@ -41,7 +41,7 @@ export default function ProfitChart({ data }: ProfitChartProps) {
                                 ))}
                             </Pie>
                             <Tooltip
-                                formatter={(value: number) => `₹${value.toLocaleString()}`}
+                                formatter={(value: any) => `₹${(value || 0).toLocaleString()}`}
                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                             />
                         </PieChart>
