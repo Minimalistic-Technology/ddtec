@@ -19,6 +19,13 @@ export default function CheckoutPage() {
     const [isSuccess, setIsSuccess] = useState(false);
     const [isAccountCreated, setIsAccountCreated] = useState(false);
 
+    // Refresh user data on mount to get latest credit balance
+    useEffect(() => {
+        if (checkUser) {
+            checkUser();
+        }
+    }, []);
+
     // Form State
     const [formData, setFormData] = useState({
         firstName: "",
@@ -681,6 +688,34 @@ export default function CheckoutPage() {
                                         <span className="font-medium text-slate-900 dark:text-white">Cash on Delivery</span>
                                     </div>
                                 </label>
+
+                                {user && (
+                                    <label className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === 'credit' ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-teal-200'} ${(user.creditBalance || 0) < finalTotal ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                        <input
+                                            type="radio"
+                                            name="payment"
+                                            value="credit"
+                                            checked={paymentMethod === 'credit'}
+                                            onChange={() => setPaymentMethod('credit')}
+                                            disabled={(user.creditBalance || 0) < finalTotal}
+                                            className="w-5 h-5 text-teal-600 focus:ring-teal-500"
+                                        />
+                                        <div className="ml-4 flex-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <CreditCard className="size-5 text-amber-500" /> {/* Reusing icon or import Coins if available */}
+                                                    <span className="font-medium text-slate-900 dark:text-white">Credit Points</span>
+                                                </div>
+                                                <span className="font-bold text-slate-700 dark:text-slate-300">
+                                                    Available: {user.creditBalance || 0}
+                                                </span>
+                                            </div>
+                                            {(user.creditBalance || 0) < finalTotal && (
+                                                <p className="text-xs text-red-500 mt-1">Insufficient balance (Need {finalTotal.toFixed(2)})</p>
+                                            )}
+                                        </div>
+                                    </label>
+                                )}
                             </div>
 
                             {paymentMethod === 'card' && (
@@ -719,20 +754,23 @@ export default function CheckoutPage() {
                         <h3 className="text-lg font-semibold text-slate-900 dark:text-white border-b dark:border-slate-800 pb-2 mb-4">Order Summary</h3>
 
                         <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar mb-6">
-                            {cartItems.map((item) => (
-                                <div key={item.product._id} className="flex gap-4">
-                                    <div className="size-16 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
-                                        <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className="font-medium text-slate-900 dark:text-white line-clamp-1">{item.product.name}</h4>
-                                        <div className="flex justify-between items-center mt-1">
-                                            <span className="text-sm text-slate-500">Qty: {item.quantity}</span>
-                                            <span className="font-semibold text-teal-600">₹{(item.product.price * item.quantity).toFixed(2)}</span>
+                            {cartItems.map((item) => {
+                                if (!item.product) return null;
+                                return (
+                                    <div key={item.product._id} className="flex gap-4">
+                                        <div className="size-16 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
+                                            <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-medium text-slate-900 dark:text-white line-clamp-1">{item.product.name}</h4>
+                                            <div className="flex justify-between items-center mt-1">
+                                                <span className="text-sm text-slate-500">Qty: {item.quantity}</span>
+                                                <span className="font-semibold text-teal-600">₹{(item.product.price * item.quantity).toFixed(2)}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {appliedCoupon && (

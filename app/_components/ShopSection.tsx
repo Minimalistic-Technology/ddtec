@@ -29,6 +29,7 @@ interface Product {
     lastMonthSales: number;
     brand?: string;
     modelName?: string;
+    isActive: boolean;
 }
 
 // Helper to get all descendant category IDs (recursive)
@@ -82,8 +83,8 @@ const SidebarCategoryItem = ({
     return (
         <div className="flex flex-col">
             <div className={`flex items-center justify-between w-full rounded-lg transition-colors ${isSelected
-                    ? "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                ? "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                 }`}
             >
                 <button
@@ -217,7 +218,9 @@ export default function ShopSection() {
                 matchesCategory = relevantCategoryIds.includes(productCatId);
             }
 
-            return matchesSearch && matchesCategory;
+            const matchesActivity = product.isActive !== false;
+
+            return matchesSearch && matchesCategory && matchesActivity;
         })
         .sort((a, b) => {
             if (sortOption === "price-low") return a.price - b.price;

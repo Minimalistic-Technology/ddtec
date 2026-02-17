@@ -29,7 +29,15 @@ api.interceptors.response.use(
   },
   (error) => {
     const errorMsg = error.response?.data?.msg || error.message || 'Unknown API Error';
-    console.error(`[API ERROR] ${error.config?.url}:`, errorMsg);
+    const isAuthMe = error.config?.url?.includes('auth/me');
+    const isUnauthorized = error.response?.status === 401;
+
+    if (isAuthMe && isUnauthorized) {
+      // Suppress error log for expected "No token" case on session check
+      console.log(`[API INFO] ${error.config?.url}: No active session`);
+    } else {
+      console.error(`[API ERROR] ${error.config?.url}:`, errorMsg);
+    }
     return Promise.reject(error);
   }
 );

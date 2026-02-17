@@ -49,7 +49,7 @@ export default function Hero() {
   ];
 
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    const sectionPaths = ["/shop", "/who", "/what", "/contact"];
+    const sectionPaths = ["/who", "/what", "/contact"];
     if (sectionPaths.includes(href)) {
       e.preventDefault();
       const sectionId = href.substring(1);

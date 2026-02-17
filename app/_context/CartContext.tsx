@@ -40,6 +40,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number; type: string } | null>(null);
+    const preventSave = React.useRef(false);
 
     // Initial Load from LocalStorage for Guest
     useEffect(() => {
@@ -56,21 +57,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             }
         }
-    }, [user]);
+    }, [user]); // Keep this for hydration
 
-    // Save to LocalStorage whenever cart changes (if guest)
+    // Fetch Cart on User Change (Moved UP)
     useEffect(() => {
-        if (!user) {
-            localStorage.setItem('guestCart', JSON.stringify(cartItems));
-        }
-    }, [cartItems, user]);
+        // Prevent saving to LS while we are switching context
+        preventSave.current = true;
 
-    // Fetch Cart on User Change
-    useEffect(() => {
         if (user) {
-            fetchCart();
+            fetchCart().finally(() => {
+                setTimeout(() => { preventSave.current = false; }, 500);
+            });
         } else {
-            // Already handled by initial load, but ensures we switch to local if user logs out
+            // Logout: Load guest cart or clear
             const localCart = localStorage.getItem('guestCart');
             if (localCart) {
                 try {
@@ -87,8 +86,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setCartItems([]);
             }
             setAppliedCoupon(null);
+
+            // Re-enable saving after a short delay to allow state to settle
+            setTimeout(() => { preventSave.current = false; }, 500);
         }
     }, [user]);
+
+    // Save to LocalStorage whenever cart changes (if guest) (Moved DOWN)
+    useEffect(() => {
+        if (!user && !preventSave.current) {
+            localStorage.setItem('guestCart', JSON.stringify(cartItems));
+        }
+    }, [cartItems, user]);
 
     const fetchCart = async () => {
         setLoading(true);
@@ -114,6 +123,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // We'll fetch the product from API to get details for the cart item.
                 const productRes = await api.get(`/products/${productId}`);
                 const product = productRes.data;
+
+                if (product.isActive === false) {
+                    alert("This product is currently inactive and cannot be added to cart.");
+                    return;
+                }
 
                 setCartItems(prev => {
                     // Filter out any broken items already in cart
