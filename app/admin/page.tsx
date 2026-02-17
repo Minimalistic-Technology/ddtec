@@ -131,7 +131,7 @@ const AdminDashboard = () => {
         rating: "",
         lastMonthSales: "",
         couponCode: "",
-        couponCode: "",
+
         discountPercentage: "",
         showOnHome: false
     });
@@ -336,8 +336,7 @@ const AdminDashboard = () => {
                 modelName: newProduct.modelName,
                 couponCode: newProduct.couponCode || undefined,
                 company: newProduct.brand, // Assuming company was meant to be brand
-                modelName: newProduct.modelName,
-                couponCode: newProduct.couponCode || undefined,
+
                 discountPercentage: Number(newProduct.discountPercentage) || 0,
                 showOnHome: newProduct.showOnHome
             });
