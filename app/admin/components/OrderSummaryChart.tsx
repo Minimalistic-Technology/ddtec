@@ -49,7 +49,7 @@ export default function OrderSummaryChart({ data, totalRevenue }: OrderSummaryPr
                         <Tooltip
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                             cursor={{ stroke: '#14b8a6', strokeWidth: 1, strokeDasharray: '4 4' }}
-                            formatter={(value: number) => [`₹${value.toLocaleString()}`, "Revenue"]}
+                            formatter={(value: any) => [`₹${(value || 0).toLocaleString()}`, "Revenue"]}
                         />
                         <Area
                             type="monotone"
