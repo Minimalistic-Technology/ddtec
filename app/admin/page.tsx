@@ -4,10 +4,17 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../_context/AuthContext";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Package, DollarSign, ShoppingBag, Loader2, Trash2, Edit, Plus, X, Tag, Image as ImageIcon, Layers, Ticket, Shield, ChevronLeft, ChevronRight, Mail, Truck, Folder } from "lucide-react";
+import { Users, Package, DollarSign, ShoppingBag, Loader2, Trash2, Edit, Plus, X, Tag, Image as ImageIcon, Layers, Ticket, Shield, ChevronLeft, ChevronRight, Mail, Truck, Folder, Coins } from "lucide-react";
 import api from "@/lib/api";
 import ToggleSwitch from "./components/ToggleSwitch";
 import CategoriesView from "./components/CategoriesView";
+import DashboardStatsCards from "./components/DashboardStatsCards";
+import ProfitChart from "./components/ProfitChart";
+import OrderSummaryChart from "./components/OrderSummaryChart";
+import StockLevel from "./components/StockLevel";
+import UpcomingRestock from "./components/UpcomingRestock";
+import TopProducts from "./components/TopProducts";
+import RecentActivity from "./components/RecentActivity";
 
 interface DashboardStats {
     users: number;
@@ -20,7 +27,17 @@ interface DashboardStats {
         status: string;
         createdAt: string;
         shippingInfo: { fullName: string };
+        user?: { firstName: string; email: string };
     }>;
+    stock?: {
+        totalStock: number;
+        lowStock: number;
+        outOfStock: number;
+    };
+    trends?: { name: string; value: number }[];
+    categoryRevenue?: { name: string; value: number }[];
+    restock?: { name: string; stock: number }[];
+    topProducts?: { name: string; totalSold: number; revenue: number; stock: number }[];
 }
 
 interface User {
@@ -32,6 +49,7 @@ interface User {
     phone?: string;
     role: string;
     isActive: boolean;
+    creditBalance?: number;
 }
 
 
@@ -47,6 +65,7 @@ interface Product {
     discountType?: 'percentage' | 'fixed';
     discountValue?: number;
     isActive: boolean;
+    showOnHome?: boolean;
 }
 
 interface Blog {
@@ -112,7 +131,9 @@ const AdminDashboard = () => {
         rating: "",
         lastMonthSales: "",
         couponCode: "",
-        discountPercentage: ""
+        couponCode: "",
+        discountPercentage: "",
+        showOnHome: false
     });
 
     const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -148,6 +169,12 @@ const AdminDashboard = () => {
         applicableProducts: [] as string[],
         isActive: true
     });
+
+    // Credit Management State
+    const [creditAmount, setCreditAmount] = useState<number | "">("");
+    const [showCreditModal, setShowCreditModal] = useState(false);
+    const [selectedUserForCredit, setSelectedUserForCredit] = useState<User | null>(null);
+    const [isProcessingCredit, setIsProcessingCredit] = useState(false);
 
     // Blog Modal State
     const [isAddBlogModalOpen, setIsAddBlogModalOpen] = useState(false);
@@ -308,7 +335,11 @@ const AdminDashboard = () => {
                 brand: newProduct.brand,
                 modelName: newProduct.modelName,
                 couponCode: newProduct.couponCode || undefined,
-                discountPercentage: Number(newProduct.discountPercentage) || 0
+                company: newProduct.brand, // Assuming company was meant to be brand
+                modelName: newProduct.modelName,
+                couponCode: newProduct.couponCode || undefined,
+                discountPercentage: Number(newProduct.discountPercentage) || 0,
+                showOnHome: newProduct.showOnHome
             });
 
             if (res.status === 200 || res.status === 201) {
@@ -316,7 +347,7 @@ const AdminDashboard = () => {
                 setIsAddModalOpen(false);
                 setNewProduct({
                     name: "", price: "", description: "", image: "", imagesInput: "", category: "", stock: "", brand: "",
-                    modelName: "", rating: "", lastMonthSales: "", couponCode: "", discountPercentage: ""
+                    modelName: "", rating: "", lastMonthSales: "", couponCode: "", discountPercentage: "", showOnHome: false
                 });
                 alert("Product Added Successfully");
             }
@@ -346,7 +377,8 @@ const AdminDashboard = () => {
             rating: String((product as any).rating || 0),
             lastMonthSales: String((product as any).lastMonthSales || 0),
             couponCode: (product as any).couponCode || "",
-            discountPercentage: String((product as any).discountPercentage || 0)
+            discountPercentage: String((product as any).discountPercentage || 0),
+            showOnHome: (product as any).showOnHome || false
         });
         setIsEditModalOpen(true);
     };
@@ -366,7 +398,8 @@ const AdminDashboard = () => {
                 rating: Number(editingProduct.rating),
                 lastMonthSales: Number(editingProduct.lastMonthSales),
                 couponCode: editingProduct.couponCode || undefined,
-                discountPercentage: Number(editingProduct.discountPercentage) || 0
+                discountPercentage: Number(editingProduct.discountPercentage) || 0,
+                showOnHome: editingProduct.showOnHome
             });
 
             if (res.status === 200) {
@@ -578,10 +611,40 @@ const AdminDashboard = () => {
     const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
         try {
             await api.put(`/orders/${orderId}/status`, { status: newStatus });
-            setOrdersList(prev => prev.map(order => order._id === orderId ? { ...order, status: newStatus } : order));
+            fetchOrders();
+        } catch (error) {
+            console.error("Failed to update order status", error);
+        }
+    };
+
+    const handleUpdateCredit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedUserForCredit) return;
+
+        const amount = Number(creditAmount);
+        if (isNaN(amount)) {
+            alert("Please enter a valid number");
+            return;
+        }
+
+        setIsProcessingCredit(true);
+        try {
+            const res = await api.put(`/auth/users/${selectedUserForCredit._id}/credit`, {
+                amount: amount,
+                type: 'add'
+            });
+
+            // Update user in list
+            setUsersList(usersList.map(u => u._id === selectedUserForCredit._id ? { ...u, creditBalance: res.data.creditBalance } : u));
+            setShowCreditModal(false);
+            setCreditAmount("");
+            setSelectedUserForCredit(null);
+            alert("Credit updated successfully!");
         } catch (error: any) {
             console.error(error);
-            alert(error.response?.data?.msg || "Failed to update order status");
+            alert(error.response?.data?.msg || "Failed to update credit");
+        } finally {
+            setIsProcessingCredit(false);
         }
     };
 
@@ -797,78 +860,46 @@ const AdminDashboard = () => {
                     </div>
 
                     {activeView === 'dashboard' && (
-                        <>
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                                <StatCard
-                                    title="Total Users"
-                                    value={stats?.users || 0}
-                                    icon={<Users className="size-6 text-blue-600" />}
-                                    bg="bg-blue-50 dark:bg-blue-900/20"
-                                />
-                                <StatCard
-                                    title="Total Products"
-                                    value={stats?.products || 0}
-                                    icon={<Package className="size-6 text-teal-600" />}
-                                    bg="bg-teal-50 dark:bg-teal-900/20"
-                                />
-                                <StatCard
-                                    title="Total Orders"
-                                    value={stats?.orders || 0}
-                                    icon={<ShoppingBag className="size-6 text-purple-600" />}
-                                    bg="bg-purple-50 dark:bg-purple-900/20"
-                                />
-                                <StatCard
-                                    title="Total Revenue"
-                                    value={`₹${(stats?.revenue || 0).toLocaleString()}`}
-                                    icon={<DollarSign className="size-6 text-green-600" />}
-                                    bg="bg-green-50 dark:bg-green-900/20"
-                                />
-                            </div>
+                        <div className="space-y-6">
 
-                            {/* Recent Activity */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Recent Activity</h2>
-                                    <div className="space-y-4">
-                                        {stats?.recentActivity && stats.recentActivity.length > 0 ? (
-                                            stats.recentActivity.map((order) => (
-                                                <div key={order._id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                                    <div className="size-10 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-600">
-                                                        <ShoppingBag className="size-5" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="font-medium text-slate-900 dark:text-white">Order placed by {order.shippingInfo.fullName}</p>
-                                                        <p className="text-sm text-slate-500">
-                                                            ₹{order.totalAmount.toFixed(2)} - {new Date(order.createdAt).toLocaleDateString()}
-                                                        </p>
-                                                    </div>
-                                                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 capitalize">
-                                                        {order.status}
-                                                    </span>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-slate-500">No recent activity.</p>
-                                        )}
-                                    </div>
+                            {/* 1. Stats Cards Row */}
+                            <DashboardStatsCards stats={{
+                                totalProducts: stats?.products || 0,
+                                totalStock: stats?.stock?.totalStock || 0,
+                                lowStock: stats?.stock?.lowStock || 0,
+                                outOfStock: stats?.stock?.outOfStock || 0
+                            }} />
+
+                            {/* 2. Charts Row (Profit & Order Summary) */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-1 min-h-[400px]">
+                                    <ProfitChart data={stats?.categoryRevenue || []} />
                                 </div>
-
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h2>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <button onClick={() => handleViewChange('products')} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left group">
-                                            <Package className="size-6 text-teal-600 mb-2 group-hover:scale-110 transition-transform" />
-                                            <span className="font-medium text-slate-900 dark:text-white block">Manage Products</span>
-                                        </button>
-                                        <button onClick={() => handleViewChange('users')} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left group">
-                                            <Users className="size-6 text-blue-600 mb-2 group-hover:scale-110 transition-transform" />
-                                            <span className="font-medium text-slate-900 dark:text-white block">Manage Users</span>
-                                        </button>
-                                    </div>
+                                <div className="lg:col-span-2 min-h-[400px]">
+                                    <OrderSummaryChart data={stats?.trends || []} totalRevenue={stats?.revenue || 0} />
                                 </div>
                             </div>
-                        </>
+
+                            {/* 3. Stock Level & Upcoming Restock */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="min-h-[500px]">
+                                    <StockLevel stockStats={stats?.stock} products={stats?.topProducts || []} />
+                                </div>
+                                <div className="min-h-[500px]">
+                                    <UpcomingRestock products={stats?.restock || []} />
+                                </div>
+                            </div>
+
+                            {/* 4. Top Products & Recent Activity */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                                <div className="lg:col-span-1 min-h-[500px]">
+                                    <TopProducts products={stats?.topProducts || []} />
+                                </div>
+                                <div className="lg:col-span-2 min-h-[500px]">
+                                    <RecentActivity activities={stats?.recentActivity || []} />
+                                </div>
+                            </div>
+                        </div>
                     )}
 
                     {activeView === 'users' && (
@@ -887,6 +918,7 @@ const AdminDashboard = () => {
                                             <th className="p-4">Email</th>
                                             <th className="p-4">Role</th>
                                             <th className="p-4">Status</th>
+                                            <th className="p-4">Credit</th>
                                             <th className="p-4 text-right">Actions</th>
                                         </tr>
                                     </thead>
@@ -905,7 +937,20 @@ const AdminDashboard = () => {
                                                         {u.isActive ? 'Active' : 'Inactive'}
                                                     </span>
                                                 </td>
+                                                <td className="p-4">
+                                                    <div className="flex items-center gap-1 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                        <Coins className="size-3 text-amber-500" />
+                                                        {u.creditBalance || 0}
+                                                    </div>
+                                                </td>
                                                 <td className="p-4 text-right flex justify-end items-center gap-2">
+                                                    <button
+                                                        onClick={() => { setSelectedUserForCredit(u); setShowCreditModal(true); }}
+                                                        className="text-amber-500 hover:text-amber-700 p-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-full transition-colors"
+                                                        title="Manage Credit"
+                                                    >
+                                                        <Coins className="size-4" />
+                                                    </button>
                                                     <ToggleSwitch isOn={u.isActive} onToggle={() => toggleUserStatus(u._id, u.isActive)} />
                                                     <button onClick={() => handleEditUserClick(u)} className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors">
                                                         <Edit className="size-4" />
@@ -939,6 +984,7 @@ const AdminDashboard = () => {
                                             <th className="p-4">Price</th>
                                             <th className="p-4">Coupons</th>
                                             <th className="p-4">Stock</th>
+                                            <th className="p-4">Home</th>
                                             <th className="p-4">Status</th>
                                             <th className="p-4 text-right">Actions</th>
                                         </tr>
@@ -975,6 +1021,11 @@ const AdminDashboard = () => {
                                                 <td className="p-4">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${p.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                                         {p.stock}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${p.showOnHome ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
+                                                        {p.showOnHome ? 'Yes' : 'No'}
                                                     </span>
                                                 </td>
                                                 <td className="p-4">
@@ -1407,27 +1458,15 @@ const AdminDashboard = () => {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Coupon Code</label>
-                                                        <input
-                                                            type="text"
-                                                            value={newProduct.couponCode}
-                                                            onChange={(e) => setNewProduct({ ...newProduct, couponCode: e.target.value })}
-                                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                            placeholder="e.g. SAVE10"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Discount (%)</label>
-                                                        <input
-                                                            type="number"
-                                                            value={newProduct.discountPercentage}
-                                                            onChange={(e) => setNewProduct({ ...newProduct, discountPercentage: e.target.value })}
-                                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
-                                                            placeholder="10"
-                                                        />
-                                                    </div>
+                                                <div className="flex items-center gap-2 mt-2 ml-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="showOnHome"
+                                                        checked={newProduct.showOnHome}
+                                                        onChange={(e) => setNewProduct({ ...newProduct, showOnHome: e.target.checked })}
+                                                        className="size-4 text-teal-600 rounded focus:ring-teal-500 border-gray-300"
+                                                    />
+                                                    <label htmlFor="showOnHome" className="text-sm font-medium text-slate-700 dark:text-slate-300">Show on Home Page</label>
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
@@ -1598,6 +1637,16 @@ const AdminDashboard = () => {
                                                             placeholder="50"
                                                         />
                                                     </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-2 ml-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="editShowOnHome"
+                                                        checked={editingProduct.showOnHome}
+                                                        onChange={(e) => setEditingProduct({ ...editingProduct, showOnHome: e.target.checked })}
+                                                        className="size-4 text-teal-600 rounded focus:ring-teal-500 border-gray-300"
+                                                    />
+                                                    <label htmlFor="editShowOnHome" className="text-sm font-medium text-slate-700 dark:text-slate-300">Show on Home Page</label>
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
@@ -2619,8 +2668,61 @@ const AdminDashboard = () => {
                     </AnimatePresence>
 
                 </div>
-            </main>
-        </div>
+            </main >
+            {/* Credit Management Modal */}
+            <AnimatePresence>
+                {showCreditModal && selectedUserForCredit && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6 border border-slate-100 dark:border-slate-800"
+                        >
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                <Coins className="size-5 text-amber-500" />
+                                Manage Credit Points
+                            </h3>
+                            <p className="text-sm text-slate-500 mb-6">
+                                Update credit points for <strong>{selectedUserForCredit.firstName}</strong>.
+                                Current Balance: <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{selectedUserForCredit.creditBalance || 0}</span>
+                            </p>
+
+                            <form onSubmit={handleUpdateCredit} className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Points to Add (or subtract)</label>
+                                    <input
+                                        type="number"
+                                        autoFocus
+                                        value={creditAmount}
+                                        onChange={(e) => setCreditAmount(parseInt(e.target.value) || "")}
+                                        className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:ring-2 focus:ring-teal-500 outline-none"
+                                        placeholder="e.g. 100 or -50"
+                                    />
+                                </div>
+
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreditModal(false)}
+                                        className="flex-1 py-2 px-4 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isProcessingCredit || creditAmount === ""}
+                                        className="flex-1 py-2 px-4 rounded-lg bg-teal-600 text-white hover:bg-teal-700 font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {isProcessingCredit ? <Loader2 className="animate-spin size-4" /> : "Update"}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </div >
     );
 };
 
@@ -2632,7 +2734,7 @@ function StatCard({ title, value, icon, bg }: { title: string, value: string | n
             </div>
             <div>
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{value}</h3>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{value}</h3>
             </div>
         </div>
     );

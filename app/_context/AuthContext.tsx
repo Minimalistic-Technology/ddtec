@@ -14,6 +14,7 @@ interface User {
     phone?: string;
     createdAt?: string;
     address?: string;
+    creditBalance?: number;
 }
 
 interface AuthContextType {
@@ -33,8 +34,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const checkUser = async () => {
         try {
-            const res = await api.get('/auth/me');
+            // Add timestamp to prevent caching
+            const res = await api.get(`/auth/me?t=${new Date().getTime()}`);
             setUser(res.data);
+            console.log("User refresh: ", res.data);
         } catch (error) {
             console.log("No active session");
             setUser(null);

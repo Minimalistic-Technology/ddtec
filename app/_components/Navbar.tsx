@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -75,6 +75,7 @@ export default function Navbar() {
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
 
 
@@ -150,7 +151,7 @@ export default function Navbar() {
     }
 
     // List of clean paths that should scroll on home page
-    const sectionPaths = ["/shop", "/who", "/what", "/contact"];
+    const sectionPaths = ["/who", "/what", "/contact"];
     const sectionId = href.startsWith("/") ? href.substring(1) : href;
 
     if (sectionPaths.includes(href)) {
@@ -240,8 +241,13 @@ export default function Navbar() {
               <div
                 key={link.href}
                 className="relative"
-                onMouseEnter={() => { console.log("Hovering:", link.name); setHoveredLink(link.name); }}
-                onMouseLeave={() => setHoveredLink(null)}
+                onMouseEnter={() => {
+                  if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                  setHoveredLink(link.name);
+                }}
+                onMouseLeave={() => {
+                  timeoutRef.current = setTimeout(() => setHoveredLink(null), 200);
+                }}
               >
                 <Link
                   href={link.href}

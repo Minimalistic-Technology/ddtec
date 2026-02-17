@@ -26,6 +26,7 @@ interface Product {
     couponCode?: string;
     discountPercentage?: number;
     images?: string[];
+    isActive: boolean;
 }
 
 export default function ProductDetailsPage() {
@@ -90,7 +91,7 @@ export default function ProductDetailsPage() {
         );
     }
 
-    if (!product) {
+    if (!product || product.isActive === false) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-4">Product Not Found</h2>
@@ -111,71 +112,73 @@ export default function ProductDetailsPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2">
                         {/* Left: Image */}
                         {/* Left: Image Gallery */}
-                        <div className="bg-slate-100 dark:bg-slate-900/50 p-4 lg:p-8 flex gap-4 min-h-[400px] lg:min-h-[600px] relative group">
-                            {/* Thumbnails */}
-                            {(product.images && product.images.length > 0) ? (
-                                <div className="hidden lg:flex flex-col gap-4 w-20 overflow-y-auto">
-                                    {product.images.map((img, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setSelectedImage(img)}
-                                            className={`border-2 rounded-lg overflow-hidden transition-all ${selectedImage === img ? 'border-teal-600 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
-                                        >
-                                            <img
-                                                src={img.startsWith('http') || img.startsWith('/') ? img : `/${img}`}
-                                                alt={`${product.name} ${idx + 1}`}
-                                                className="w-full h-20 object-contain bg-white dark:bg-slate-800"
-                                            />
-                                        </button>
-                                    ))}
-                                </div>
-                            ) : null}
+                        <div className="p-4 lg:p-8 relative">
+                            <div className="sticky top-24 flex gap-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
+                                {/* Thumbnails */}
+                                {(product.images && product.images.length > 0) ? (
+                                    <div className="hidden lg:flex flex-col gap-4 w-20 overflow-y-auto max-h-[600px]">
+                                        {product.images.map((img, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setSelectedImage(img)}
+                                                className={`border-2 rounded-lg overflow-hidden transition-all flex-shrink-0 ${selectedImage === img ? 'border-teal-600 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                            >
+                                                <img
+                                                    src={img.startsWith('http') || img.startsWith('/') ? img : `/${img}`}
+                                                    alt={`${product.name} ${idx + 1}`}
+                                                    className="w-full h-20 object-contain bg-white dark:bg-slate-800"
+                                                />
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : null}
 
-                            {/* Main Image */}
-                            <div className="flex-1 flex items-center justify-center relative">
-                                {product.stock === 0 && (
-                                    <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-900/50 z-10 flex items-center justify-center">
-                                        <span className="bg-red-600 text-white px-6 py-3 rounded-full font-bold text-xl tracking-wide transform rotate-[-12deg] shadow-2xl border-4 border-white/20 backdrop-blur-sm">
-                                            SOLD OUT
-                                        </span>
+                                {/* Main Image */}
+                                <div className="flex-1 flex items-center justify-center relative min-h-[400px]">
+                                    {product.stock === 0 && (
+                                        <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-900/50 z-10 flex items-center justify-center rounded-xl">
+                                            <span className="bg-red-600 text-white px-6 py-3 rounded-full font-bold text-xl tracking-wide transform rotate-[-12deg] shadow-2xl border-4 border-white/20 backdrop-blur-sm">
+                                                SOLD OUT
+                                            </span>
+                                        </div>
+                                    )}
+                                    <motion.div
+                                        className="relative w-full h-full flex items-center justify-center cursor-zoom-in"
+                                        onClick={() => setIsLightboxOpen(true)}
+                                    >
+                                        <motion.img
+                                            key={selectedImage}
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            src={selectedImage ? (selectedImage.startsWith('http') || selectedImage.startsWith('/') ? selectedImage : `/${selectedImage}`) : (product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/${product.image}`)}
+                                            alt={product.name}
+                                            className={`w-full max-h-[600px] object-contain drop-shadow-xl transition-all duration-500 rounded-xl ${product.stock === 0 ? 'grayscale opacity-75' : 'group-hover:scale-105'}`}
+                                        />
+                                        <div className="absolute top-4 right-4 bg-white/80 dark:bg-slate-800/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                                            <Maximize2 className="size-5 text-slate-700 dark:text-white" />
+                                        </div>
+                                    </motion.div>
+                                </div>
+
+                                {/* Mobile Thumbnails (Bottom) */}
+                                {(product.images && product.images.length > 0) && (
+                                    <div className="absolute -bottom-20 left-0 right-0 flex lg:hidden justify-center gap-2 overflow-x-auto px-4 py-2">
+                                        {product.images.map((img, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setSelectedImage(img)}
+                                                className={`border-2 rounded-lg overflow-hidden flex-shrink-0 w-16 h-16 transition-all bg-white dark:bg-slate-800 shadow-sm ${selectedImage === img ? 'border-teal-600 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                            >
+                                                <img
+                                                    src={img.startsWith('http') || img.startsWith('/') ? img : `/${img}`}
+                                                    alt={`${product.name} ${idx + 1}`}
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
-                                <motion.div
-                                    className="relative w-full h-full flex items-center justify-center cursor-zoom-in"
-                                    onClick={() => setIsLightboxOpen(true)}
-                                >
-                                    <motion.img
-                                        key={selectedImage}
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        src={selectedImage ? (selectedImage.startsWith('http') || selectedImage.startsWith('/') ? selectedImage : `/${selectedImage}`) : (product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/${product.image}`)}
-                                        alt={product.name}
-                                        className={`w-full max-h-[500px] object-contain drop-shadow-2xl transition-all duration-500 ${product.stock === 0 ? 'grayscale opacity-75' : 'group-hover:scale-105'}`}
-                                    />
-                                    <div className="absolute top-4 right-4 bg-white/80 dark:bg-slate-800/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Maximize2 className="size-5 text-slate-700 dark:text-white" />
-                                    </div>
-                                </motion.div>
                             </div>
-
-                            {/* Mobile Thumbnails (Bottom) */}
-                            {(product.images && product.images.length > 0) && (
-                                <div className="absolute bottom-4 left-0 right-0 flex lg:hidden justify-center gap-2 overflow-x-auto px-4">
-                                    {product.images.map((img, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setSelectedImage(img)}
-                                            className={`border-2 rounded-lg overflow-hidden flex-shrink-0 w-16 h-16 transition-all ${selectedImage === img ? 'border-teal-600 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
-                                        >
-                                            <img
-                                                src={img.startsWith('http') || img.startsWith('/') ? img : `/${img}`}
-                                                alt={`${product.name} ${idx + 1}`}
-                                                className="w-full h-full object-contain bg-white dark:bg-slate-800"
-                                            />
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
                         </div>
 
                         {/* Right: Info */}
@@ -255,14 +258,6 @@ export default function ProductDetailsPage() {
                             </div>
 
 
-                            {/* Description */}
-                            <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-100 dark:border-slate-700">
-                                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase mb-3">About Product</h3>
-                                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    {product.description}
-                                </p>
-                            </div>
-
                             {/* Features / Assurance */}
                             <div className="grid grid-cols-2 gap-4 mb-8">
                                 <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800">
@@ -312,6 +307,16 @@ export default function ProductDetailsPage() {
                                     <MessageCircle className="size-5 group-hover:scale-110 transition-transform" /> Share on WhatsApp
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Description Section (Full Width Below) */}
+                    <div className="p-8 lg:p-12 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">About Product</h3>
+                        <div className="prose prose-slate dark:prose-invert max-w-none">
+                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-lg">
+                                {product.description}
+                            </p>
                         </div>
                     </div>
                 </div>
