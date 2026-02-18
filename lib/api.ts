@@ -17,6 +17,14 @@ api.interceptors.request.use((config) => {
     config.url = config.url.substring(1);
   }
 
+  // Inject token if available (fallback for cookies)
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('ddtec_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+
   console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data || '');
   return config;
 });
