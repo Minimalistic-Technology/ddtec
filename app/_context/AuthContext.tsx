@@ -48,8 +48,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         // Explicitly clear legacy localstorage items to satisfy user request
-        localStorage.removeItem("ddtec_user");
-        localStorage.removeItem("ddtec_token");
+        // localStorage.removeItem("ddtec_user");
+        // localStorage.removeItem("ddtec_token");
 
         // Check session cookie on mount via /me
         checkUser();
@@ -58,6 +58,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const login = async (email: string, password: string) => {
         try {
             const res = await api.post('/auth/login', { email, password });
+
+            // Store token for fallback
+            if (res.data.token) {
+                localStorage.setItem("ddtec_token", res.data.token);
+            }
 
             setUser(res.data.user);
 
@@ -81,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error("Logout error", error);
         } finally {
+            localStorage.removeItem("ddtec_token");
             setUser(null);
             router.push("/login");
         }
