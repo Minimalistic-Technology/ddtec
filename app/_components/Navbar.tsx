@@ -91,11 +91,14 @@ export default function Navbar() {
 
     const fetchCategories = async () => {
       try {
+        console.log("Navbar: Fetching categories...");
         const { data } = await api.get('/categories');
-        console.log("Navbar: Fetched categories:", data);
+        console.log("Navbar: Fetched categories:", data?.length, "items", data);
         setCategories(data);
-      } catch (error) {
-        console.error("Navbar: Failed to fetch categories", error);
+      } catch (error: any) {
+        console.error("Navbar: Failed to fetch categories", error.message, error.response?.data);
+        // Optional: Set an empty state or error state if needed
+        setCategories([]);
       }
     };
     fetchCategories();

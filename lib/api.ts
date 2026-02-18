@@ -3,8 +3,12 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
   withCredentials: true,
-  timeout: 20000, // 20 seconds timeout to prevent infinite "Sending..."
+  timeout: 20000,
 });
+
+if (typeof window !== 'undefined') {
+  console.log('[API CONFIG] Base URL:', process.env.NEXT_PUBLIC_BACKEND_URL || 'UNDEFINED - Check Environment Variables');
+}
 
 // Add a request interceptor to handle path prefixes and logging
 api.interceptors.request.use((config) => {
