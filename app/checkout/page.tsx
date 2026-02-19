@@ -576,7 +576,7 @@ export default function CheckoutPage() {
 
     return (
         <section className="min-h-screen pt-24 pb-12 px-6 bg-slate-50 dark:bg-slate-950 relative">
-            <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="max-w-6xl mx-auto flex flex-col-reverse lg:grid lg:grid-cols-2 gap-12">
                 {/* Left Column: Shipping & Payment */}
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
