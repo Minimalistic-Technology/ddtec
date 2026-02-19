@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 import api from "@/lib/api";
 
 interface CartItem {
@@ -37,6 +38,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
+    const { showToast } = useToast();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountAmount: number; type: string } | null>(null);
@@ -124,8 +126,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const productRes = await api.get(`/products/${productId}`);
                 const product = productRes.data;
 
+
                 if (product.isActive === false) {
-                    alert("This product is currently inactive and cannot be added to cart.");
+                    showToast("This product is currently inactive and cannot be added to cart.", "error");
                     return;
                 }
 
@@ -148,10 +151,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                     return newItems;
                 });
-                alert("Item added to cart!");
+                showToast("Item added to cart!", "success");
             } catch (error) {
                 console.error("Failed to add to local cart", error);
-                alert("Failed to add to cart");
+                showToast("Failed to add to cart", "error");
             }
             return;
         }
@@ -161,11 +164,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (res.status === 200 || res.status === 201) {
                 setCartItems(res.data.items);
                 setAppliedCoupon(null);
-                alert("Item added to cart!");
+                showToast("Item added to cart!", "success");
             }
         } catch (error) {
             console.error(error);
-            alert("Failed to add to cart");
+            showToast("Failed to add to cart", "error");
         }
     };
 
