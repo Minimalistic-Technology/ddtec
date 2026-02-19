@@ -61,7 +61,7 @@ export default function FeaturedProducts() {
     // The slice approach above works but detailing 'nextSlide' logic to be circular is better.
 
     return (
-        <section className="py-24 bg-white dark:bg-slate-950 relative overflow-hidden">
+        <section className="py-12 md:py-24 bg-white dark:bg-slate-950 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-teal-500/5 rounded-full blur-[100px]" />
                 <div className="absolute bottom-[20%] right-[10%] w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px]" />

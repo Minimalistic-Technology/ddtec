@@ -47,7 +47,7 @@ const Contact: React.FC = () => {
     };
 
     return (
-        <section id="contact" className="py-24 relative overflow-hidden bg-white dark:bg-slate-900">
+        <section id="contact" className="py-12 md:py-24 relative overflow-hidden bg-white dark:bg-slate-900">
             {/* Background Decor */}
             <div className="absolute top-0 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-[100px]" />
             <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px]" />

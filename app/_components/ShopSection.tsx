@@ -134,6 +134,7 @@ export default function ShopSection() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar state
 
     // Filters & Sort State
     const [searchQuery, setSearchQuery] = useState("");
@@ -286,10 +287,13 @@ export default function ShopSection() {
                             />
                         </div>
 
-                        {/* Filter Dropdown - HIDDEN on Desktop (moved to sidebar), visible on mobile if needed or just rely on sidebar */}
-                        {/* <div className="relative md:hidden">
-                           ... mobile filter could go here ...
-                        </div> */}
+                        {/* Filter Toggle (Mobile) */}
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="lg:hidden p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            <Filter className="size-5" />
+                        </button>
 
                         {/* Sort Dropdown */}
                         <div className="relative">
@@ -317,15 +321,35 @@ export default function ShopSection() {
 
                 <div className="flex flex-col lg:flex-row gap-8">
                     {/* Sidebar Filters */}
-                    <aside className="w-full lg:w-64 flex-shrink-0 space-y-8">
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <div className="flex items-center gap-2 mb-4">
+                    {/* Sidebar Filters */}
+                    <AnimatePresence>
+                        {isSidebarOpen && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsSidebarOpen(false)}
+                                className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
+                            />
+                        )}
+                    </AnimatePresence>
+
+                    <aside className={`fixed inset-y-0 left-0 z-[60] w-72 bg-white dark:bg-slate-900 p-6 shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-0 lg:w-64 lg:p-0 lg:shadow-none lg:bg-transparent ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                        <div className="flex items-center justify-between mb-6 lg:hidden">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Filters</h3>
+                            <button onClick={() => setIsSidebarOpen(false)} className="p-2 -mr-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                <X className="size-5" />
+                            </button>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl lg:p-6 lg:border lg:border-slate-200 lg:dark:border-slate-800 lg:shadow-sm h-full overflow-y-auto lg:h-auto">
+                            <div className="flex items-center gap-2 mb-4 hidden lg:flex">
                                 <Filter className="size-5 text-teal-600" />
                                 <h3 className="font-bold text-slate-900 dark:text-white">Categories</h3>
                             </div>
                             <div className="space-y-2">
                                 <button
-                                    onClick={() => handleCategoryChange("All")}
+                                    onClick={() => { handleCategoryChange("All"); setIsSidebarOpen(false); }}
                                     className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === "All"
                                         ? "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400"
                                         : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -339,7 +363,7 @@ export default function ShopSection() {
                                         category={category}
                                         allCategories={categories}
                                         selectedCategory={selectedCategory}
-                                        onSelect={handleCategoryChange}
+                                        onSelect={(id) => { handleCategoryChange(id); setIsSidebarOpen(false); }}
                                     />
                                 ))}
                             </div>

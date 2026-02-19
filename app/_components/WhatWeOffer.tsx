@@ -55,7 +55,7 @@ const WhatWeOffer: React.FC = () => {
   };
 
   return (
-    <section id="what" className="py-24 bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
+    <section id="what" className="py-12 md:py-24 bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
       {/* Background patterns */}
       <div className="absolute top-1/2 left-0 w-96 h-96 bg-teal-500/5 rounded-full blur-[100px] -translate-y-1/2" />
       <div className="absolute bottom-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px]" />

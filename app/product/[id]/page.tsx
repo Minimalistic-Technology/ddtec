@@ -115,7 +115,7 @@ export default function ProductDetailsPage() {
                         {/* Left: Image */}
                         {/* Left: Image Gallery */}
                         <div className="p-4 lg:p-8 relative">
-                            <div className="sticky top-24 flex gap-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
+                            <div className="relative lg:sticky lg:top-24 flex flex-col lg:flex-row gap-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
                                 {/* Thumbnails */}
                                 {(product.images && product.images.length > 0) ? (
                                     <div className="hidden lg:flex flex-col gap-4 w-20 overflow-y-auto max-h-[600px]">
@@ -136,7 +136,7 @@ export default function ProductDetailsPage() {
                                 ) : null}
 
                                 {/* Main Image */}
-                                <div className="flex-1 flex items-center justify-center relative min-h-[400px]">
+                                <div className="flex-1 flex items-center justify-center relative min-h-[300px] lg:min-h-[400px]">
                                     {product.stock === 0 && (
                                         <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-900/50 z-10 flex items-center justify-center rounded-xl">
                                             <span className="bg-red-600 text-white px-6 py-3 rounded-full font-bold text-xl tracking-wide transform rotate-[-12deg] shadow-2xl border-4 border-white/20 backdrop-blur-sm">
@@ -164,7 +164,7 @@ export default function ProductDetailsPage() {
 
                                 {/* Mobile Thumbnails (Bottom) */}
                                 {(product.images && product.images.length > 0) && (
-                                    <div className="absolute -bottom-20 left-0 right-0 flex lg:hidden justify-center gap-2 overflow-x-auto px-4 py-2">
+                                    <div className="mt-4 flex lg:hidden justify-start gap-2 overflow-x-auto px-4 py-2 bg-slate-100 dark:bg-slate-800/50 rounded-xl">
                                         {product.images.map((img, idx) => (
                                             <button
                                                 key={idx}
@@ -242,9 +242,9 @@ export default function ProductDetailsPage() {
                                     <span className="text-4xl font-bold text-teal-600 dark:text-teal-400">
                                         ₹{product.price.toLocaleString()}
                                     </span>
-                                    {product.discountPercentage && product.discountPercentage > 0 && (
+                                    {(product.discountPercentage || 0) > 0 && (
                                         <span className="text-lg text-slate-400 line-through mb-1">
-                                            ₹{Math.round(product.price / (1 - product.discountPercentage / 100)).toLocaleString()}
+                                            ₹{Math.round(product.price / (1 - (product.discountPercentage || 0) / 100)).toLocaleString()}
                                         </span>
                                     )}
                                 </div>

@@ -24,7 +24,7 @@ const features = [
 
 const WhoWeAre: React.FC = () => {
   return (
-    <section id="who" className="py-24 bg-white dark:bg-slate-900/50 relative overflow-hidden">
+    <section id="who" className="py-12 md:py-24 bg-white dark:bg-slate-900/50 relative overflow-hidden">
       {/* Decor */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl" />
 
