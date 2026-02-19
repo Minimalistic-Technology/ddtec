@@ -101,7 +101,7 @@ export default function CartPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="flex flex-col-reverse lg:grid lg:grid-cols-3 gap-8">
                     {/* Cart Items */}
                     <div className="lg:col-span-2 space-y-4">
                         {validCartItems.map((item) => (
@@ -126,9 +126,9 @@ export default function CartPage() {
                                             <h3 className="font-bold text-slate-900 dark:text-white">{item.product.name}</h3>
                                             <div className="flex items-center gap-2">
                                                 <p className="text-teal-600 font-bold">₹{item.product.price}</p>
-                                                {item.product.discountPercentage && item.product.discountPercentage > 0 && (
+                                                {(item.product.discountPercentage || 0) > 0 && (
                                                     <span className="text-xs text-slate-400 line-through">
-                                                        ₹{(item.product.price / (1 - item.product.discountPercentage / 100)).toFixed(2)}
+                                                        ₹{(item.product.price / (1 - (item.product.discountPercentage || 0) / 100)).toFixed(2)}
                                                     </span>
                                                 )}
                                             </div>
