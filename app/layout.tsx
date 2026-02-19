@@ -23,8 +23,8 @@ export default function RootLayout({
       <body className={`${poppins.variable} min-h-screen flex flex-col font-poppins`} suppressHydrationWarning>
         <ThemeProvider>
           <AuthProvider>
-            <CartProvider>
-              <ToastProvider>
+            <ToastProvider>
+              <CartProvider>
                 <Navbar />
 
                 {/* Main content grows to push footer down */}
@@ -33,8 +33,8 @@ export default function RootLayout({
                 </main>
 
                 <Footer />
-              </ToastProvider>
-            </CartProvider>
+              </CartProvider>
+            </ToastProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

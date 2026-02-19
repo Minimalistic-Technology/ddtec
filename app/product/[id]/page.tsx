@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "../../_context/AuthContext";
 import { useCart } from "../../_context/CartContext";
+import { useToast } from "../../_context/ToastContext";
 import { Loader2, Star, ShoppingBag, Truck, ShieldCheck, ArrowLeft, Tag, Layers, TrendingUp, X, Maximize2, MessageCircle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -33,6 +34,7 @@ export default function ProductDetailsPage() {
     const { id } = useParams();
     const router = useRouter();
     const { addToCart } = useCart();
+    const { showToast } = useToast();
     const [product, setProduct] = useState<Product | null>(null);
     const [selectedImage, setSelectedImage] = useState<string>("");
     const [coupons, setCoupons] = useState<any[]>([]);
@@ -438,7 +440,7 @@ export default function ProductDetailsPage() {
                                                 <button
                                                     onClick={() => {
                                                         navigator.clipboard.writeText(coupon.code || "");
-                                                        alert("Coupon code copied!");
+                                                        showToast("Coupon code copied!", "success");
                                                     }}
                                                     className="px-3 py-1 bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 rounded-lg text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors"
                                                 >
@@ -472,8 +474,9 @@ export default function ProductDetailsPage() {
                             </div>
                         </motion.div>
                     </div>
-                )}
-            </AnimatePresence>
+                )
+                }
+            </AnimatePresence >
         </section >
     );
 }
