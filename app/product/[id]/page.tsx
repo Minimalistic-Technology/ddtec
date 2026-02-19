@@ -244,7 +244,7 @@ export default function ProductDetailsPage() {
                                     </span>
                                     {(product.discountPercentage || 0) > 0 && (
                                         <span className="text-lg text-slate-400 line-through mb-1">
-                                            ₹{Math.round(product.price / (1 - product.discountPercentage / 100)).toLocaleString()}
+                                            ₹{Math.round(product.price / (1 - (product.discountPercentage || 0) / 100)).toLocaleString()}
                                         </span>
                                     )}
                                 </div>
