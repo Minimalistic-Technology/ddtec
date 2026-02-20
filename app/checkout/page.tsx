@@ -136,7 +136,8 @@ export default function CheckoutPage() {
     const freeDeliveryThreshold = 500;
     const isFreeDelivery = subtotal >= freeDeliveryThreshold;
     const shippingCost = isFreeDelivery ? 0 : 50;
-    const tax = totalPrice * 0.1;
+    // Remove 10% tax as requested
+    const tax = 0;
     const finalTotal = totalPrice + tax + shippingCost;
 
     const initiateOtpFlow = async () => {

@@ -4,8 +4,10 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../_context/AuthContext";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Package, DollarSign, ShoppingBag, Loader2, Trash2, Edit, Plus, X, Tag, Image as ImageIcon, Layers, Ticket, Shield, ChevronLeft, ChevronRight, Mail, Truck, Folder, Coins } from "lucide-react";
+import { Users, Package, DollarSign, ShoppingBag, Loader2, Trash2, Edit, Plus, X, Tag, Image as ImageIcon, Layers, Ticket, Shield, ChevronLeft, ChevronRight, Mail, Truck, Folder, Coins, Download, Share2, Receipt } from "lucide-react";
 import api from "@/lib/api";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import ToggleSwitch from "./components/ToggleSwitch";
 import CategoriesView from "./components/CategoriesView";
 import DashboardStatsCards from "./components/DashboardStatsCards";
@@ -66,6 +68,7 @@ interface Product {
     discountValue?: number;
     isActive: boolean;
     showOnHome?: boolean;
+    taxes?: { name: string; rate: number }[];
 }
 
 interface Blog {
@@ -94,7 +97,7 @@ const AdminDashboard = () => {
     const router = useRouter();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loadingStats, setLoadingStats] = useState(true);
-    const [activeView, setActiveView] = useState<'dashboard' | 'products' | 'users' | 'orders' | 'inventory' | 'messages' | 'coupons' | 'blogs' | 'categories'>('dashboard');
+    const [activeView, setActiveView] = useState<'dashboard' | 'products' | 'users' | 'orders' | 'inventory' | 'messages' | 'coupons' | 'blogs' | 'categories' | 'billing'>('dashboard');
 
     // Data for Manage Views
     const [usersList, setUsersList] = useState<User[]>([]);
@@ -131,9 +134,9 @@ const AdminDashboard = () => {
         rating: "",
         lastMonthSales: "",
         couponCode: "",
-
         discountPercentage: "",
-        showOnHome: false
+        showOnHome: false,
+        taxes: [] as { name: string; rate: number }[]
     });
 
     const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -188,6 +191,13 @@ const AdminDashboard = () => {
         slug: '',
         tags: [] as string[]
     });
+
+    // Billing State
+    const [billingItems, setBillingItems] = useState<any[]>([]);
+    const [customerInfo, setCustomerInfo] = useState({ name: "", phone: "", email: "", address: "" });
+    const [billingSearchQuery, setBillingSearchQuery] = useState("");
+    const [billingSearchResults, setBillingSearchResults] = useState<Product[]>([]);
+    const [showBillingSearchResults, setShowBillingSearchResults] = useState(false);
 
     useEffect(() => {
         if (!authLoading) {
@@ -256,7 +266,7 @@ const AdminDashboard = () => {
     };
 
     useEffect(() => {
-        if (activeView === 'products' || activeView === 'inventory') fetchProducts();
+        if (activeView === 'products' || activeView === 'inventory' || activeView === 'billing') fetchProducts();
         if (activeView === 'users') fetchUsers();
         if (activeView === 'orders') fetchOrders();
         if (activeView === 'messages') fetchMessages();
@@ -346,7 +356,8 @@ const AdminDashboard = () => {
                 setIsAddModalOpen(false);
                 setNewProduct({
                     name: "", price: "", description: "", image: "", imagesInput: "", category: "", stock: "", brand: "",
-                    modelName: "", rating: "", lastMonthSales: "", couponCode: "", discountPercentage: "", showOnHome: false
+                    modelName: "", rating: "", lastMonthSales: "", couponCode: "", discountPercentage: "", showOnHome: false,
+                    taxes: []
                 });
                 alert("Product Added Successfully");
             }
@@ -377,7 +388,8 @@ const AdminDashboard = () => {
             lastMonthSales: String((product as any).lastMonthSales || 0),
             couponCode: (product as any).couponCode || "",
             discountPercentage: String((product as any).discountPercentage || 0),
-            showOnHome: (product as any).showOnHome || false
+            showOnHome: (product as any).showOnHome || false,
+            taxes: product.taxes || []
         });
         setIsEditModalOpen(true);
     };
@@ -398,7 +410,8 @@ const AdminDashboard = () => {
                 lastMonthSales: Number(editingProduct.lastMonthSales),
                 couponCode: editingProduct.couponCode || undefined,
                 discountPercentage: Number(editingProduct.discountPercentage) || 0,
-                showOnHome: editingProduct.showOnHome
+                showOnHome: editingProduct.showOnHome,
+                taxes: editingProduct.taxes
             });
 
             if (res.status === 200) {
@@ -415,10 +428,10 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleViewChange = (view: 'dashboard' | 'products' | 'users' | 'orders' | 'inventory' | 'messages' | 'coupons' | 'blogs' | 'categories') => {
+    const handleViewChange = (view: 'dashboard' | 'products' | 'users' | 'orders' | 'inventory' | 'messages' | 'coupons' | 'blogs' | 'categories' | 'billing') => {
         setActiveView(view);
         if (view === 'users') fetchUsers();
-        if (view === 'products' || view === 'inventory') fetchProducts();
+        if (view === 'products' || view === 'inventory' || view === 'billing') fetchProducts();
         if (view === 'orders') fetchOrders();
         if (view === 'messages') fetchMessages();
         if (view === 'coupons') fetchCoupons();
@@ -779,6 +792,12 @@ const AdminDashboard = () => {
                             <button onClick={() => handleViewChange('blogs')} className={`w-full flex items-center p-2 rounded-lg group ${activeView === 'blogs' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'} ${isSidebarCollapsed ? 'justify-center' : ''}`}>
                                 <Edit className="size-5 text-slate-500 transition duration-75 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white" />
                                 {!isSidebarCollapsed && <span className="ms-3">Blogs</span>}
+                            </button>
+                        </li>
+                        <li>
+                            <button onClick={() => handleViewChange('billing')} className={`w-full flex items-center p-2 rounded-lg group ${activeView === 'billing' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'} ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+                                <DollarSign className="size-5 text-slate-500 transition duration-75 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white" />
+                                {!isSidebarCollapsed && <span className="ms-3">Billing</span>}
                             </button>
                         </li>
                     </ul>
@@ -1350,6 +1369,599 @@ const AdminDashboard = () => {
 
                     {activeView === 'categories' && <CategoriesView />}
 
+                    {activeView === 'billing' && (
+                        <div className="space-y-6">
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Create New Bill</h2>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    {/* Left: Product Search & Bill Items */}
+                                    <div className="lg:col-span-2 space-y-6">
+                                        <div className="relative">
+                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Search Product (Inventory)</label>
+                                            <div className="relative">
+                                                <ShoppingBag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+                                                <input
+                                                    type="text"
+                                                    value={billingSearchQuery}
+                                                    onChange={(e) => {
+                                                        const query = e.target.value;
+                                                        setBillingSearchQuery(query);
+                                                        if (query.length > 1) {
+                                                            const filtered = productsList.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+                                                            setBillingSearchResults(filtered);
+                                                            setShowBillingSearchResults(true);
+                                                        } else {
+                                                            setShowBillingSearchResults(false);
+                                                        }
+                                                    }}
+                                                    placeholder="Search by product name..."
+                                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-teal-500 outline-none"
+                                                />
+                                            </div>
+
+                                            {showBillingSearchResults && billingSearchResults.length > 0 && (
+                                                <div className="absolute z-10 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                                                    {billingSearchResults.map((p: Product) => (
+                                                        <button
+                                                            key={p._id}
+                                                            onClick={() => {
+                                                                const newItem = {
+                                                                    productId: p._id,
+                                                                    name: p.name,
+                                                                    price: p.price,
+                                                                    quantity: 1,
+                                                                    taxes: p.taxes || [],
+                                                                    fromInventory: true
+                                                                };
+                                                                setBillingItems([...billingItems, newItem]);
+                                                                setBillingSearchQuery("");
+                                                                setShowBillingSearchResults(false);
+                                                            }}
+                                                            className="w-full text-left p-4 hover:bg-slate-50 dark:hover:bg-slate-700 border-b border-slate-100 dark:border-slate-700 last:border-0 flex justify-between items-center"
+                                                        >
+                                                            <div>
+                                                                <div className="font-bold text-slate-900 dark:text-white">{p.name}</div>
+                                                                <div className="text-xs text-slate-500 italic">Stock: {p.stock}</div>
+                                                            </div>
+                                                            <div className="text-teal-600 dark:text-teal-400 font-bold">₹{p.price}</div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+                                            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
+                                                <h3 className="font-bold text-slate-900 dark:text-white">Bill Items</h3>
+                                                <button
+                                                    onClick={() => setBillingItems([...billingItems, { name: "", price: 0, quantity: 1, taxes: [], fromInventory: false }])}
+                                                    className="text-xs px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1"
+                                                >
+                                                    <Plus className="size-3" /> Add Custom Item
+                                                </button>
+                                            </div>
+                                            <div className="p-4 space-y-4 max-h-[500px] overflow-y-auto">
+                                                {billingItems.length === 0 ? (
+                                                    <div className="text-center py-12 text-slate-400">
+                                                        <ShoppingBag className="size-12 mx-auto mb-4 opacity-20" />
+                                                        <p>No items added to the bill yet.</p>
+                                                    </div>
+                                                ) : (
+                                                    billingItems.map((item: any, idx: number) => (
+                                                        <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                                                            <div className="flex gap-4">
+                                                                <div className="flex-1">
+                                                                    <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Item Name</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={item.name}
+                                                                        readOnly={item.fromInventory}
+                                                                        onChange={(e) => {
+                                                                            const updated = [...billingItems];
+                                                                            updated[idx].name = e.target.value;
+                                                                            setBillingItems(updated);
+                                                                        }}
+                                                                        className={`w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 outline-none ${item.fromInventory ? 'opacity-70' : ''}`}
+                                                                        placeholder="Item name..."
+                                                                    />
+                                                                </div>
+                                                                <div className="w-32">
+                                                                    <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Price</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={item.price}
+                                                                        readOnly={item.fromInventory}
+                                                                        onChange={(e) => {
+                                                                            const updated = [...billingItems];
+                                                                            updated[idx].price = Number(e.target.value);
+                                                                            setBillingItems(updated);
+                                                                        }}
+                                                                        className={`w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 outline-none ${item.fromInventory ? 'opacity-70' : ''}`}
+                                                                    />
+                                                                </div>
+                                                                <div className="w-24">
+                                                                    <label className="text-[10px] uppercase font-bold text-slate-400 mb-1 block">Qty</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        value={item.quantity}
+                                                                        onChange={(e) => {
+                                                                            const updated = [...billingItems];
+                                                                            updated[idx].quantity = Number(e.target.value);
+                                                                            setBillingItems(updated);
+                                                                        }}
+                                                                        className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 outline-none"
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => setBillingItems(billingItems.filter((_, i) => i !== idx))}
+                                                                    className="self-end p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                                                                >
+                                                                    <Trash2 className="size-5" />
+                                                                </button>
+                                                            </div>
+                                                            {/* Item Taxes */}
+                                                            <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex flex-wrap gap-2">
+                                                                <span className="text-[10px] uppercase font-bold text-slate-400 self-center">Taxes:</span>
+                                                                {item.taxes.map((tax: any, tIdx: number) => (
+                                                                    <div key={tIdx} className="px-2 py-1 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 rounded text-xs flex items-center gap-1">
+                                                                        {tax.name} ({tax.rate}%)
+                                                                        {!item.fromInventory && (
+                                                                            <button onClick={() => {
+                                                                                const updated = [...billingItems];
+                                                                                updated[idx].taxes = updated[idx].taxes.filter((_: any, i: number) => i !== tIdx);
+                                                                                setBillingItems(updated);
+                                                                            }} className="hover:text-red-500"><X className="size-3" /></button>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                                {!item.fromInventory && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const tName = prompt("Tax Name (e.g. GST)");
+                                                                            const tRate = prompt("Tax Rate (%)");
+                                                                            if (tName && tRate && !isNaN(Number(tRate))) {
+                                                                                const updated = [...billingItems];
+                                                                                updated[idx].taxes.push({ name: tName, rate: Number(tRate) });
+                                                                                setBillingItems(updated);
+                                                                            }
+                                                                        }}
+                                                                        className="text-[10px] px-2 py-1 border border-dashed border-slate-300 dark:border-slate-600 rounded text-slate-500 hover:bg-slate-50"
+                                                                    >
+                                                                        + Add Tax
+                                                                    </button>
+                                                                )}
+                                                                {item.taxes.length === 0 && item.fromInventory && <span className="text-xs text-slate-400 italic">No taxes</span>}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Customer Info & Summary */}
+                                    <div className="space-y-6">
+                                        <div className="bg-slate-50 dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 space-y-4">
+                                            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                                <Users className="size-5 text-teal-500" /> Customer Details
+                                            </h3>
+                                            <div className="space-y-3">
+                                                <input
+                                                    type="text"
+                                                    value={customerInfo.name}
+                                                    onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                                                    placeholder="Customer Name"
+                                                    className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-teal-500"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={customerInfo.phone}
+                                                    onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                                                    placeholder="Phone Number"
+                                                    className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-teal-500"
+                                                />
+                                                <textarea
+                                                    value={customerInfo.address}
+                                                    onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
+                                                    placeholder="Full Address (Optional)"
+                                                    className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-teal-500 h-24 resize-none shadow-sm"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-teal-600 p-6 rounded-2xl shadow-xl shadow-teal-600/20 text-white space-y-4">
+                                            <h3 className="font-bold text-lg border-b border-white/20 pb-2">Bill Summary</h3>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="opacity-80">Subtotal</span>
+                                                    <span className="font-bold">₹{billingItems.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0).toLocaleString()}</span>
+                                                </div>
+                                                {/* Calculate merged taxes */}
+                                                {(() => {
+                                                    const taxesMap: Record<string, number> = {};
+                                                    billingItems.forEach((item: any) => {
+                                                        item.taxes.forEach((tax: any) => {
+                                                            const amount = (item.price * item.quantity) * (tax.rate / 100);
+                                                            taxesMap[tax.name] = (taxesMap[tax.name] || 0) + amount;
+                                                        });
+                                                    });
+                                                    return Object.entries(taxesMap).map(([name, amount]: [string, number]) => (
+                                                        <div key={name} className="flex justify-between">
+                                                            <span className="opacity-80">{name}</span>
+                                                            <span className="font-bold">₹{amount.toLocaleString()}</span>
+                                                        </div>
+                                                    ));
+                                                })()}
+                                                <div className="pt-4 mt-4 border-t border-white/20 flex justify-between items-end">
+                                                    <span className="text-lg font-bold">Total Amount</span>
+                                                    <span className="text-3xl font-black">
+                                                        ₹{(() => {
+                                                            const subtotal = billingItems.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+                                                            let taxTotal = 0;
+                                                            billingItems.forEach((item: any) => {
+                                                                item.taxes.forEach((tax: any) => {
+                                                                    taxTotal += (item.price * item.quantity) * (tax.rate / 100);
+                                                                });
+                                                            });
+                                                            return Math.round(subtotal + taxTotal).toLocaleString();
+                                                        })()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    if (billingItems.length === 0) {
+                                                        alert("Please add at least one item.");
+                                                        return;
+                                                    }
+                                                    if (!customerInfo.name) {
+                                                        alert("Customer name is required.");
+                                                        return;
+                                                    }
+
+                                                    setIsSubmitting(true);
+                                                    try {
+                                                        // For now, we'll create an order with status 'delivered'
+                                                        // This assumes the backend /orders endpoint can handle this.
+                                                        // Real billing might need a separate API, but this is a good start.
+                                                        const billData = {
+                                                            billingItems,
+                                                            customerInfo,
+                                                            totalAmount: billingItems.reduce((acc: number, item: any) => {
+                                                                const itemTotal = item.price * item.quantity;
+                                                                const itemTax = item.taxes.reduce((tAcc: number, tax: any) => tAcc + (itemTotal * (tax.rate / 100)), 0);
+                                                                return acc + itemTotal + itemTax;
+                                                            }, 0),
+                                                            source: 'admin_billing'
+                                                        };
+
+                                                        // Mocking the creation success if API not ready, 
+                                                        // or implementing if possible.
+                                                        console.log("Generating Bill:", billData);
+
+                                                        // Update state to show that bill is "generated" but still editable
+                                                        alert("Bill Data Prepared! You can now Download or Share the PDF.");
+
+                                                    } catch (error) {
+                                                        console.error(error);
+                                                        alert("Failed to create bill.");
+                                                    } finally {
+                                                        setIsSubmitting(false);
+                                                    }
+                                                }}
+                                                disabled={isSubmitting}
+                                                className="w-full py-4 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                            >
+                                                {isSubmitting ? <Loader2 className="animate-spin size-5" /> : <Receipt className="size-5" />}
+                                                {isSubmitting ? "Processing..." : "Generate Bill Data"}
+                                            </button>
+
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button
+                                                    onClick={() => {
+                                                        if (billingItems.length === 0) {
+                                                            alert("Please add items first.");
+                                                            return;
+                                                        }
+
+                                                        const doc = new jsPDF();
+
+                                                        // --- PROFESSIONAL HEADER ---
+                                                        // Top Teal Accent Bar
+                                                        doc.setFillColor(20, 184, 166);
+                                                        doc.rect(0, 0, 210, 25, 'F');
+
+                                                        // Company Name & Invoice Label
+                                                        doc.setTextColor(255);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.setFontSize(24);
+                                                        doc.text("DDTECH", 20, 17);
+
+                                                        doc.setFontSize(14);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text("INVOICE", 190, 17, { align: "right" });
+
+                                                        // --- COMPANY & BILLING DETAILS ---
+                                                        doc.setTextColor(50);
+                                                        doc.setFontSize(10);
+
+                                                        // Left Side: Company Address (Mock)
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("DDTECH TOOLS", 20, 45);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text("123 Tech Lane, Silicon Valley", 20, 51);
+                                                        doc.text("Contact: +91 98765 43210", 20, 57);
+                                                        doc.text("Email: support@ddtech.com", 20, 63);
+
+                                                        // Right Side: Billing Details
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("BILL TO:", 120, 45);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text(`${customerInfo.name || "Valued Customer"}`, 120, 51);
+                                                        doc.text(`${customerInfo.phone || "No Phone"}`, 120, 57);
+                                                        doc.text(`${customerInfo.address || "No Address Provided"}`, 120, 63, { maxWidth: 70 });
+
+                                                        // Horizontal Separator
+                                                        doc.setDrawColor(230);
+                                                        doc.line(20, 75, 190, 75);
+
+                                                        // Date and Invoice Number
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("DATE:", 20, 85);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text(new Date().toLocaleDateString(), 40, 85);
+
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("INVOICE NO:", 120, 85);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text(`INV-${new Date().getTime().toString().slice(-6)}`, 150, 85);
+
+                                                        // --- ITEMS TABLE ---
+                                                        const tableData = billingItems.map((item: any) => {
+                                                            const itemTotal = item.price * item.quantity;
+                                                            const itemTax = item.taxes.reduce((tAcc: number, tax: any) => tAcc + (itemTotal * (tax.rate / 100)), 0);
+                                                            return [
+                                                                item.name,
+                                                                `Rs. ${item.price.toLocaleString()}`,
+                                                                item.quantity,
+                                                                `Rs. ${itemTax.toLocaleString()}`,
+                                                                `Rs. ${(itemTotal + itemTax).toLocaleString()}`
+                                                            ];
+                                                        });
+
+                                                        autoTable(doc, {
+                                                            startY: 95,
+                                                            head: [["Product Name", "Unit Price", "Quantity", "Tax Amount", "Total"]],
+                                                            body: tableData,
+                                                            theme: 'striped',
+                                                            headStyles: {
+                                                                fillColor: [20, 184, 166],
+                                                                fontSize: 10,
+                                                                fontStyle: 'bold',
+                                                                halign: 'center'
+                                                            },
+                                                            columnStyles: {
+                                                                0: { cellWidth: 70 },
+                                                                1: { halign: 'right' },
+                                                                2: { halign: 'center' },
+                                                                3: { halign: 'right' },
+                                                                4: { halign: 'right', fontStyle: 'bold' }
+                                                            },
+                                                            didParseCell: (data) => {
+                                                                if (data.section === 'body' && data.column.index === 0) {
+                                                                    // Limits the text to 1 line as requested
+                                                                    if (Array.isArray(data.cell.text) && data.cell.text.length > 1) {
+                                                                        data.cell.text = [data.cell.text[0]];
+                                                                    }
+                                                                }
+                                                            }
+                                                        });
+
+                                                        // --- SUMMARY & TOTALS ---
+                                                        const finalY = (doc as any).lastAutoTable.finalY + 10;
+                                                        const subtotal = billingItems.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+                                                        let taxTotal = 0;
+                                                        billingItems.forEach((item: any) => {
+                                                            item.taxes.forEach((tax: any) => {
+                                                                taxTotal += (item.price * item.quantity) * (tax.rate / 100);
+                                                            });
+                                                        });
+
+                                                        // Calculation Box
+                                                        doc.setFillColor(245, 245, 245);
+                                                        doc.rect(130, finalY, 60, 35, 'F');
+
+                                                        doc.setFontSize(10);
+                                                        doc.setTextColor(100);
+                                                        doc.text("Subtotal:", 135, finalY + 10);
+                                                        doc.text(`Rs. ${subtotal.toLocaleString()}`, 185, finalY + 10, { align: "right" });
+
+                                                        doc.text("Tax Amount:", 135, finalY + 18);
+                                                        doc.text(`Rs. ${taxTotal.toLocaleString()}`, 185, finalY + 18, { align: "right" });
+
+                                                        doc.setDrawColor(200);
+                                                        doc.line(135, finalY + 23, 185, finalY + 23);
+
+                                                        doc.setFontSize(12);
+                                                        doc.setTextColor(20, 184, 166);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("Total:", 135, finalY + 30);
+                                                        doc.text(`Rs. ${(subtotal + taxTotal).toLocaleString()}`, 185, finalY + 30, { align: "right" });
+
+                                                        // --- FOOTER SECTION ---
+                                                        const pageHeight = doc.internal.pageSize.height;
+
+                                                        doc.setFontSize(8);
+                                                        doc.setTextColor(150);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text("Terms & Conditions", 20, pageHeight - 30);
+                                                        doc.text("1. All sales are final. 2. Please mention the invoice number for any queries.", 20, pageHeight - 25);
+
+                                                        doc.setFontSize(10);
+                                                        doc.setTextColor(20, 184, 166);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("Authorized Signatory", 190, pageHeight - 15, { align: "right" });
+
+                                                        doc.setFontSize(8);
+                                                        doc.setTextColor(180);
+                                                        doc.text("www.ddtech.com | Support: support@ddtech.com", 105, pageHeight - 10, { align: "center" });
+
+                                                        doc.save(`Invoice_${customerInfo.name || "Customer"}_${new Date().getTime().toString().slice(-6)}.pdf`);
+                                                    }}
+                                                    className="py-3 bg-white text-teal-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-teal-50 transition-colors"
+                                                >
+                                                    <Download className="size-4" /> Download PDF
+                                                </button>
+
+                                                <button
+                                                    onClick={async () => {
+                                                        if (billingItems.length === 0) {
+                                                            alert("Please add items first.");
+                                                            return;
+                                                        }
+
+                                                        const doc = new jsPDF();
+
+                                                        // --- REUSE GENERATION LOGIC FOR SHARING ---
+                                                        doc.setFillColor(20, 184, 166);
+                                                        doc.rect(0, 0, 210, 25, 'F');
+                                                        doc.setTextColor(255);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.setFontSize(24);
+                                                        doc.text("DDTECH", 20, 17);
+                                                        doc.setFontSize(14);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text("INVOICE", 190, 17, { align: "right" });
+                                                        doc.setTextColor(50);
+                                                        doc.setFontSize(10);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("DDTECH TOOLS", 20, 45);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text("123 Tech Lane, Silicon Valley", 20, 51);
+                                                        doc.text("Contact: +91 98765 43210", 20, 57);
+                                                        doc.text("Email: support@ddtech.com", 20, 63);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("BILL TO:", 120, 45);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text(`${customerInfo.name || "Valued Customer"}`, 120, 51);
+                                                        doc.text(`${customerInfo.phone || "No Phone"}`, 120, 57);
+                                                        doc.text(`${customerInfo.address || "No Address Provided"}`, 120, 63, { maxWidth: 70 });
+                                                        doc.setDrawColor(230);
+                                                        doc.line(20, 75, 190, 75);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("DATE:", 20, 85);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text(new Date().toLocaleDateString(), 40, 85);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("INVOICE NO:", 120, 85);
+                                                        doc.setFont("helvetica", "normal");
+                                                        doc.text(`INV-${new Date().getTime().toString().slice(-6)}`, 150, 85);
+
+                                                        const tableData = billingItems.map((item: any) => {
+                                                            const itemTotal = item.price * item.quantity;
+                                                            const itemTax = item.taxes.reduce((tAcc: number, tax: any) => tAcc + (itemTotal * (tax.rate / 100)), 0);
+                                                            return [item.name, `Rs. ${item.price.toLocaleString()}`, item.quantity, `Rs. ${itemTax.toLocaleString()}`, `Rs. ${(itemTotal + itemTax).toLocaleString()}`];
+                                                        });
+
+                                                        autoTable(doc, {
+                                                            startY: 95,
+                                                            head: [["Product Name", "Unit Price", "Quantity", "Tax Amount", "Total"]],
+                                                            body: tableData,
+                                                            theme: 'striped',
+                                                            headStyles: { fillColor: [20, 184, 166], fontSize: 10, fontStyle: 'bold', halign: 'center' },
+                                                            columnStyles: { 0: { cellWidth: 70 }, 1: { halign: 'right' }, 2: { halign: 'center' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } },
+                                                            didParseCell: (data) => { if (data.section === 'body' && data.column.index === 0) { if (Array.isArray(data.cell.text) && data.cell.text.length > 1) { data.cell.text = [data.cell.text[0]]; } } }
+                                                        });
+
+                                                        const finalY = (doc as any).lastAutoTable.finalY + 10;
+                                                        const subtotal = billingItems.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+                                                        let taxTotal = 0;
+                                                        billingItems.forEach((item: any) => {
+                                                            item.taxes.forEach((tax: any) => { taxTotal += (item.price * item.quantity) * (tax.rate / 100); });
+                                                        });
+                                                        doc.setFillColor(245, 245, 245);
+                                                        doc.rect(130, finalY, 60, 35, 'F');
+                                                        doc.setFontSize(10);
+                                                        doc.setTextColor(100);
+                                                        doc.text("Subtotal:", 135, finalY + 10);
+                                                        doc.text(`Rs. ${subtotal.toLocaleString()}`, 185, finalY + 10, { align: "right" });
+                                                        doc.text("Tax Amount:", 135, finalY + 18);
+                                                        doc.text(`Rs. ${taxTotal.toLocaleString()}`, 185, finalY + 18, { align: "right" });
+                                                        doc.setDrawColor(200);
+                                                        doc.line(135, finalY + 23, 185, finalY + 23);
+                                                        doc.setFontSize(12);
+                                                        doc.setTextColor(20, 184, 166);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("Total:", 135, finalY + 30);
+                                                        doc.text(`Rs. ${(subtotal + taxTotal).toLocaleString()}`, 185, finalY + 30, { align: "right" });
+
+                                                        const pageHeight = doc.internal.pageSize.height;
+                                                        doc.setFontSize(8);
+                                                        doc.setTextColor(150);
+                                                        doc.text("Terms & Conditions", 20, pageHeight - 30);
+                                                        doc.text("1. All sales are final. 2. Please mention the invoice number for any queries.", 20, pageHeight - 25);
+                                                        doc.setFontSize(10);
+                                                        doc.setTextColor(20, 184, 166);
+                                                        doc.setFont("helvetica", "bold");
+                                                        doc.text("Authorized Signatory", 190, pageHeight - 15, { align: "right" });
+                                                        doc.setFontSize(8);
+                                                        doc.setTextColor(180);
+                                                        doc.text("www.ddtech.com | Support: support@ddtech.com", 105, pageHeight - 10, { align: "center" });
+
+                                                        // --- PDF SHARING LOGIC ---
+                                                        const pdfBlob = doc.output('blob');
+                                                        const fileName = `Invoice_${customerInfo.name || "Customer"}.pdf`;
+                                                        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+                                                        const shareData = {
+                                                            files: [file],
+                                                            title: 'Invoice - DDTECH TOOLS',
+                                                            text: `Invoice for ${customerInfo.name || "Customer"}`,
+                                                        };
+
+                                                        if (navigator.canShare && navigator.canShare(shareData)) {
+                                                            try {
+                                                                await navigator.share(shareData);
+                                                            } catch (err) {
+                                                                console.log("PDF share failed:", err);
+                                                            }
+                                                        } else {
+                                                            // Fallback to WhatsApp text share
+                                                            const total = subtotal + taxTotal;
+                                                            const message = `Hello ${customerInfo.name || "Customer"},\n\nYour invoice from DDTECH TOOLS is ready.\nTotal: Rs. ${total.toLocaleString()}\n\n(PDF Sharing not supported on this browser)`;
+                                                            const encodedMessage = encodeURIComponent(message);
+                                                            const phone = customerInfo.phone ? customerInfo.phone.replace(/\D/g, '') : "";
+                                                            window.open(`https://wa.me/${phone ? "91" + phone : ""}?text=${encodedMessage}`, '_blank');
+                                                        }
+                                                    }}
+                                                    className="py-3 bg-teal-500 text-white border border-teal-400 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-teal-600 transition-colors"
+                                                >
+                                                    <Share2 className="size-4" /> Share PDF
+                                                </button>
+                                            </div>
+
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm("Are you sure you want to reset the current bill?")) {
+                                                        setBillingItems([]);
+                                                        setCustomerInfo({ name: "", phone: "", email: "", address: "" });
+                                                    }
+                                                }}
+                                                className="w-full py-2 text-xs text-white/60 hover:text-white transition-all underline decoration-white/20"
+                                            >
+                                                Reset Bill
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeView === 'categories' && <CategoriesView />}
+
                     {/* Add Product Modal */}
                     <AnimatePresence>
                         {
@@ -1466,6 +2078,65 @@ const AdminDashboard = () => {
                                                         className="size-4 text-teal-600 rounded focus:ring-teal-500 border-gray-300"
                                                     />
                                                     <label htmlFor="showOnHome" className="text-sm font-medium text-slate-700 dark:text-slate-300">Show on Home Page</label>
+                                                </div>
+
+                                                {/* Tax Management */}
+                                                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                                            <DollarSign className="size-4 text-teal-500" /> Tax Management
+                                                        </h4>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setNewProduct({ ...newProduct, taxes: [...newProduct.taxes, { name: "", rate: 0 }] })}
+                                                            className="text-xs px-2 py-1 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 rounded hover:bg-teal-200 transition-colors"
+                                                        >
+                                                            + Add Tax
+                                                        </button>
+                                                    </div>
+                                                    {newProduct.taxes.map((tax, idx) => (
+                                                        <div key={idx} className="flex gap-2 items-end">
+                                                            <div className="flex-1">
+                                                                <input
+                                                                    type="text"
+                                                                    value={tax.name}
+                                                                    onChange={(e) => {
+                                                                        const updatedTaxes = [...newProduct.taxes];
+                                                                        updatedTaxes[idx].name = e.target.value;
+                                                                        setNewProduct({ ...newProduct, taxes: updatedTaxes });
+                                                                    }}
+                                                                    placeholder="Tax Name (e.g. GST)"
+                                                                    className="w-full px-3 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800"
+                                                                />
+                                                            </div>
+                                                            <div className="w-24">
+                                                                <input
+                                                                    type="number"
+                                                                    value={tax.rate}
+                                                                    onChange={(e) => {
+                                                                        const updatedTaxes = [...newProduct.taxes];
+                                                                        updatedTaxes[idx].rate = Number(e.target.value);
+                                                                        setNewProduct({ ...newProduct, taxes: updatedTaxes });
+                                                                    }}
+                                                                    placeholder="Rate %"
+                                                                    className="w-full px-3 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800"
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const updatedTaxes = newProduct.taxes.filter((_, i) => i !== idx);
+                                                                    setNewProduct({ ...newProduct, taxes: updatedTaxes });
+                                                                }}
+                                                                className="p-2 text-red-500 hover:bg-red-50 rounded"
+                                                            >
+                                                                <X className="size-4" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    {newProduct.taxes.length === 0 && (
+                                                        <p className="text-xs text-slate-400 italic">No taxes added.</p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
@@ -1646,6 +2317,65 @@ const AdminDashboard = () => {
                                                         className="size-4 text-teal-600 rounded focus:ring-teal-500 border-gray-300"
                                                     />
                                                     <label htmlFor="editShowOnHome" className="text-sm font-medium text-slate-700 dark:text-slate-300">Show on Home Page</label>
+                                                </div>
+
+                                                {/* Tax Management */}
+                                                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                                            <DollarSign className="size-4 text-teal-500" /> Tax Management
+                                                        </h4>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingProduct({ ...editingProduct, taxes: [...(editingProduct.taxes || []), { name: "", rate: 0 }] })}
+                                                            className="text-xs px-2 py-1 bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 rounded hover:bg-teal-200 transition-colors"
+                                                        >
+                                                            + Add Tax
+                                                        </button>
+                                                    </div>
+                                                    {(editingProduct.taxes || []).map((tax: any, idx: number) => (
+                                                        <div key={idx} className="flex gap-2 items-end">
+                                                            <div className="flex-1">
+                                                                <input
+                                                                    type="text"
+                                                                    value={tax.name}
+                                                                    onChange={(e) => {
+                                                                        const updatedTaxes = [...editingProduct.taxes];
+                                                                        updatedTaxes[idx].name = e.target.value;
+                                                                        setEditingProduct({ ...editingProduct, taxes: updatedTaxes });
+                                                                    }}
+                                                                    placeholder="Tax Name (e.g. GST)"
+                                                                    className="w-full px-3 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800"
+                                                                />
+                                                            </div>
+                                                            <div className="w-24">
+                                                                <input
+                                                                    type="number"
+                                                                    value={tax.rate}
+                                                                    onChange={(e) => {
+                                                                        const updatedTaxes = [...editingProduct.taxes];
+                                                                        updatedTaxes[idx].rate = Number(e.target.value);
+                                                                        setEditingProduct({ ...editingProduct, taxes: updatedTaxes });
+                                                                    }}
+                                                                    placeholder="Rate %"
+                                                                    className="w-full px-3 py-1.5 text-sm rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800"
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const updatedTaxes = editingProduct.taxes.filter((_: any, i: number) => i !== idx);
+                                                                    setEditingProduct({ ...editingProduct, taxes: updatedTaxes });
+                                                                }}
+                                                                className="p-2 text-red-500 hover:bg-red-50 rounded"
+                                                            >
+                                                                <X className="size-4" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    {(!editingProduct.taxes || editingProduct.taxes.length === 0) && (
+                                                        <p className="text-xs text-slate-400 italic">No taxes added.</p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
