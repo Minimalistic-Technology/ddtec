@@ -137,7 +137,7 @@ export default function ProductDetailsPage() {
 
                                 {/* Main Image */}
                                 <div className="flex-1 flex items-center justify-center relative min-h-[300px] lg:min-h-[400px]">
-                                    {product.stock === 0 && (
+                                    {product.stock <= 0 && (
                                         <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-900/50 z-10 flex items-center justify-center rounded-xl">
                                             <span className="bg-red-600 text-white px-6 py-3 rounded-full font-bold text-xl tracking-wide transform rotate-[-12deg] shadow-2xl border-4 border-white/20 backdrop-blur-sm">
                                                 SOLD OUT
@@ -154,7 +154,7 @@ export default function ProductDetailsPage() {
                                             animate={{ opacity: 1, scale: 1 }}
                                             src={selectedImage ? (selectedImage.startsWith('http') || selectedImage.startsWith('/') ? selectedImage : `/${selectedImage}`) : (product.image.startsWith('http') || product.image.startsWith('/') ? product.image : `/${product.image}`)}
                                             alt={product.name}
-                                            className={`w-full max-h-[600px] object-contain drop-shadow-xl transition-all duration-500 rounded-xl ${product.stock === 0 ? 'grayscale opacity-75' : 'group-hover:scale-105'}`}
+                                            className={`w-full max-h-[600px] object-contain drop-shadow-xl transition-all duration-500 rounded-xl ${product.stock <= 0 ? 'grayscale opacity-75' : 'group-hover:scale-105'}`}
                                         />
                                         <div className="absolute top-4 right-4 bg-white/80 dark:bg-slate-800/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
                                             <Maximize2 className="size-5 text-slate-700 dark:text-white" />
@@ -282,7 +282,7 @@ export default function ProductDetailsPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <button
                                         onClick={() => addToCart(product._id)}
-                                        disabled={product.stock === 0}
+                                        disabled={product.stock <= 0}
                                         className="py-4 rounded-xl font-bold border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-teal-600 hover:text-teal-600 dark:hover:border-teal-500 dark:hover:text-teal-400 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <ShoppingBag className="size-5" /> Add to Cart
@@ -292,7 +292,7 @@ export default function ProductDetailsPage() {
                                             await addToCart(product._id);
                                             router.push('/cart');
                                         }}
-                                        disabled={product.stock === 0}
+                                        disabled={product.stock <= 0}
                                         className="py-4 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         Buy Now

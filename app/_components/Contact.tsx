@@ -6,9 +6,11 @@ import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Send, MessageSquare } from "lucide-react";
 import { useAuth } from "../_context/AuthContext";
 import api from "@/lib/api";
+import { useComponentSettings } from "@/app/_context/ComponentSettingsContext";
 
 const Contact: React.FC = () => {
     const { user } = useAuth();
+    const { settings } = useComponentSettings();
     const [formState, setFormState] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -28,7 +30,7 @@ const Contact: React.FC = () => {
             console.log("[CONTACT] Submitting form...", data);
             const response = await api.post('/contact', {
                 ...data,
-                userId: user?.id
+                userId: user?._id
             });
             console.log("[CONTACT] Submission Response:", response.data);
 
@@ -45,6 +47,9 @@ const Contact: React.FC = () => {
             setTimeout(() => setFormState("idle"), 3000);
         }
     };
+
+    const isSuperAdmin = user?.role === 'super_admin';
+    if (!settings.Contact && !isSuperAdmin) return null;
 
     return (
         <section id="contact" className="py-12 md:py-24 relative overflow-hidden bg-white dark:bg-slate-900">

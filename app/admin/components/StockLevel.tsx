@@ -1,5 +1,8 @@
 "use client";
 
+import React from "react";
+import { motion } from "framer-motion";
+
 interface StockLevelProps {
     stockStats?: {
         totalStock: number;
@@ -20,7 +23,9 @@ export default function StockLevel({ stockStats, products }: StockLevelProps) {
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm h-full flex flex-col">
             <div className="flex justify-between items-center mb-6 shrink-0">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Stock Level</h3>
-                <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-300">Top Items</span>
+                <span className={`px-2 py-1 text-xs font-bold rounded-lg ${((stockStats?.lowStock || 0) + (stockStats?.outOfStock || 0)) > 0 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {((stockStats?.lowStock || 0) + (stockStats?.outOfStock || 0)) > 0 ? 'Stock Alerts' : 'Top Items'}
+                </span>
             </div>
 
             <div className="mb-8 shrink-0">
@@ -42,28 +47,37 @@ export default function StockLevel({ stockStats, products }: StockLevelProps) {
                 {products && products.length > 0 ? (
                     products.map((product, index) => {
                         // Estimate "total capacity" as current stock + sold, or just double stock if sold is 0 to show some bar
-                        const total = product.stock + product.totalSold;
+                        const total = product.stock + (product.totalSold || 0);
                         const percentage = total > 0 ? (product.stock / total) * 100 : 0;
+
+                        // Semantic colors
+                        const barColor = product.stock === 0 ? "bg-red-500" :
+                            product.stock <= 5 ? "bg-orange-500" :
+                                product.stock <= 15 ? "bg-amber-400" : "bg-teal-500";
 
                         return (
                             <div key={index}>
-                                <div className="flex justify-between text-sm mb-1">
-                                    <span className="font-medium text-slate-700 dark:text-slate-300 truncate w-2/3">{product.name}</span>
-                                    <span className={`text-xs ${product.stock === 0 ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
-                                        {product.stock === 0 ? 'Out of Stock' : `${product.stock} left`}
+                                <div className="flex justify-between items-center text-sm mb-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className={`size-2 rounded-full shrink-0 ${barColor.replace('bg-', 'animate-pulse bg-')}`} />
+                                        <span className="font-bold text-slate-700 dark:text-slate-300 truncate">{product.name}</span>
+                                    </div>
+                                    <span className={`text-xs font-mono font-bold whitespace-nowrap ml-2 ${product.stock === 0 ? 'text-red-500' : 'text-slate-500'}`}>
+                                        {product.stock === 0 ? 'STOCKED OUT' : `${product.stock} pcs`}
                                     </span>
                                 </div>
-                                <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full ${COLORS[index % COLORS.length]}`}
-                                        style={{ width: `${percentage}%` }}
+                                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${percentage}%` }}
+                                        className={`h-full rounded-full ${barColor}`}
                                     />
                                 </div>
                             </div>
                         );
                     })
                 ) : (
-                    <div className="text-center text-slate-400 text-sm py-4">No product data available</div>
+                    <div className="text-center text-slate-400 text-sm py-4 italic">No inventory tracking available</div>
                 )}
             </div>
         </div>
