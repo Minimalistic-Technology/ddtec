@@ -11,61 +11,16 @@ import LoadingBar from "./LoadingBar";
 import api from "@/lib/api";
 import { useAuth } from "../_context/AuthContext";
 import { useCart } from "../_context/CartContext";
+import { useComponentSettings } from "../_context/ComponentSettingsContext";
 
-// Helper component for recursive category rendering
-const CategoryItem = ({ category, allCategories, depth = 0 }: { category: any, allCategories: any[], depth?: number }) => {
-  const children = allCategories.filter(c => c.parent && (c.parent._id === category._id || c.parent === category._id));
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const handleToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsExpanded(!isExpanded);
-  };
-
-  return (
-    <div className="flex flex-col">
-      <div className={cn(
-        "flex items-center justify-between pr-2 transition-colors",
-        depth === 0 ? "hover:bg-slate-50 dark:hover:bg-slate-800" : "hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
-      )}>
-        <Link
-          href={`/shop?category=${category.slug || category._id}`}
-          className={cn(
-            "block py-1.5 text-sm transition-colors hover:text-teal-600 dark:hover:text-teal-400 truncate flex-1",
-            depth === 0
-              ? "font-bold text-slate-800 dark:text-slate-100 px-4 py-2"
-              : "text-slate-600 dark:text-slate-400 border-l-2 border-transparent hover:border-teal-100"
-          )}
-          style={{ paddingLeft: depth > 0 ? `${depth * 12 + 16}px` : undefined }}
-        >
-          {category.name}
-        </Link>
-        {children.length > 0 && (
-          <button
-            onClick={handleToggle}
-            className="p-1 rounded-md text-slate-400 hover:text-teal-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-          >
-            {isExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-          </button>
-        )}
-      </div>
-      {children.length > 0 && isExpanded && (
-        <div className="flex flex-col">
-          {children.map(child => (
-            <CategoryItem key={child._id} category={child} allCategories={allCategories} depth={depth + 1} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+import NavCategoryItem from "./Navbar/NavCategoryItem";
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
   // ... existing hooks
   const { user, logout } = useAuth();
   const { cartCount } = useCart(); // Cart Context Hook
+  const { settings } = useComponentSettings();
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -130,14 +85,17 @@ export default function Navbar() {
     return () => observer.disconnect();
   }, [pathname]);
 
+  const isAdminRole = user && ['super_admin', 'product_manager', 'order_manager', 'customer_support', 'finance', 'marketing', 'admin'].includes(user.role);
+  const isSuperAdmin = user?.role === 'super_admin';
+
   const navLinks = [
     { name: "Home", href: "/" },
-    { name: "Shop", href: "/shop" },
-    { name: "Who we are", href: "/who" },
-    { name: "What we offer", href: "/what" },
+    ...(settings.ShopSection || isSuperAdmin ? [{ name: "Shop", href: "/shop" }] : []),
+    ...(settings.WhoWeAre || isSuperAdmin ? [{ name: "Who we are", href: "/who" }] : []),
+    ...(settings.WhatWeOffer || isSuperAdmin ? [{ name: "What we offer", href: "/what" }] : []),
     { name: "Blog", href: "/blogs" },
-    { name: "Contact", href: "/contact" },
-    ...(user && user.role === 'admin' ? [{ name: "Dashboard", href: "/admin" }] : [])
+    ...(settings.Contact || isSuperAdmin ? [{ name: "Contact", href: "/contact" }] : []),
+    ...(isAdminRole ? [{ name: "Dashboard", href: "/admin" }] : [])
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -221,7 +179,7 @@ export default function Navbar() {
         transition={{ duration: 0.5 }}
         className={cn(
           "fixed top-0 inset-x-0 z-50 transition-all duration-300 border-b",
-          scrolled
+          (scrolled || pathname?.startsWith('/admin'))
             ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-slate-200 dark:border-slate-800 shadow-sm"
             : "bg-transparent border-transparent"
         )}
@@ -289,7 +247,7 @@ export default function Navbar() {
                           {categories
                             .filter(cat => !cat.parent) // Top-level categories
                             .map((parent) => (
-                              <CategoryItem key={parent._id} category={parent} allCategories={categories} depth={0} />
+                              <NavCategoryItem key={parent._id} category={parent} allCategories={categories} depth={0} />
                             ))}
                         </div>
                       ) : (
@@ -304,7 +262,7 @@ export default function Navbar() {
 
 
           <div className="flex items-center gap-2 sm:gap-4">
-            {(!user || user.role !== 'admin') && (
+            {!isAdminRole && (
               <Link
                 href="/cart"
                 onClick={(e) => {

@@ -3,23 +3,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-
-interface User {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-    createdAt?: string;
-    address?: string;
-    creditBalance?: number;
-}
+import { User } from "@/lib/types";
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string, password: string) => Promise<void>;
+    login: (identifier: string, password: string) => Promise<void>;
     logout: () => void;
     loading: boolean;
     checkUser: () => Promise<void>;
@@ -55,9 +43,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         checkUser();
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = async (identifier: string, password: string) => {
         try {
-            const res = await api.post('/auth/login', { email, password });
+            const isPhone = /^[0-9+]+$/.test(identifier);
+            const payload = {
+                email: isPhone ? "" : identifier,
+                phone: isPhone ? identifier : "",
+                password
+            };
+            const res = await api.post('/auth/login', payload);
 
             // Store token for fallback
             if (res.data.token) {
@@ -66,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             setUser(res.data.user);
 
-            if (res.data.user.role === 'admin') {
+            if (res.data.user.role !== 'user') {
                 router.push("/admin");
             } else {
                 router.push("/");

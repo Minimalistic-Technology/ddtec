@@ -6,6 +6,7 @@ interface UpcomingRestockProps {
     products: Array<{
         name: string;
         stock: number;
+        image?: string;
     }>;
 }
 
@@ -27,8 +28,12 @@ export default function UpcomingRestock({ products }: UpcomingRestockProps) {
             <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar flex-1">
                 {products.map((product, index) => (
                     <div key={index} className="flex items-center gap-4">
-                        <div className="size-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 shrink-0">
-                            <Package className="size-5" />
+                        <div className="size-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 shrink-0 overflow-hidden border border-slate-200 dark:border-slate-700">
+                            {product.image ? (
+                                <img src={product.image} alt={product.name} className="size-full object-cover" />
+                            ) : (
+                                <Package className="size-5" />
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
                             <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">{product.name}</h4>

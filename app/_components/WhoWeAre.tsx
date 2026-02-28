@@ -3,6 +3,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, Users, Wrench } from "lucide-react";
+import { useComponentSettings } from "@/app/_context/ComponentSettingsContext";
+import { useAuth } from "@/app/_context/AuthContext";
 
 const features = [
   {
@@ -23,6 +25,12 @@ const features = [
 ];
 
 const WhoWeAre: React.FC = () => {
+  const { settings } = useComponentSettings();
+  const { user } = useAuth();
+
+  const isSuperAdmin = user?.role === 'super_admin';
+  if (!settings.WhoWeAre && !isSuperAdmin) return null;
+
   return (
     <section id="who" className="py-12 md:py-24 bg-white dark:bg-slate-900/50 relative overflow-hidden">
       {/* Decor */}

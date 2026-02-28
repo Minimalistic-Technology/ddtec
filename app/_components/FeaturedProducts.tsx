@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/api";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ShoppingCart, Eye } from "lucide-react";
+import { useComponentSettings } from "@/app/_context/ComponentSettingsContext";
+import { useAuth } from "@/app/_context/AuthContext";
 
 interface Product {
     _id: string;
@@ -14,9 +16,12 @@ interface Product {
     category: { name: string } | string;
     discountValue: number;
     discountType: 'percentage' | 'fixed';
+    stock: number;
 }
 
 export default function FeaturedProducts() {
+    const { settings } = useComponentSettings();
+    const { user } = useAuth();
     const [products, setProducts] = useState<Product[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [itemsPerSlide, setItemsPerSlide] = useState(4);
@@ -52,6 +57,8 @@ export default function FeaturedProducts() {
         setCurrentIndex((prev) => (prev - itemsPerSlide < 0 ? Math.max(0, products.length - itemsPerSlide) : prev - itemsPerSlide));
     };
 
+    const isSuperAdmin = user?.role === 'super_admin';
+    if (!settings.FeaturedProducts && !isSuperAdmin) return null;
     if (products.length === 0) return null;
 
     const visibleProducts = products.slice(currentIndex, currentIndex + itemsPerSlide);
@@ -106,10 +113,17 @@ export default function FeaturedProducts() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 transition={{ duration: 0.3 }}
-                                className="group relative bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-teal-500/30 dark:hover:border-teal-500/30 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300"
+                                className={`group relative bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-teal-500/30 dark:hover:border-teal-500/30 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 ${Number(product.stock) <= 0 ? 'opacity-75 grayscale' : ''}`}
                             >
                                 <Link href={`/product/${product._id}`} className="block h-full">
                                     <div className="aspect-[3/4] bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
+                                        {Number(product.stock) <= 0 && (
+                                            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                                                <span className="bg-red-600 text-white px-2 py-1 rounded-lg font-black text-[10px] tracking-tighter shadow-lg rotate-[-10deg] border border-white/20 uppercase">
+                                                    Sold Out
+                                                </span>
+                                            </div>
+                                        )}
                                         {product.image ? (
                                             <img
                                                 src={product.image}

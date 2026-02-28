@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Facebook, Twitter, Instagram, Linkedin, Hammer } from "lucide-react";
+import { useComponentSettings } from "../_context/ComponentSettingsContext";
+import { useAuth } from "../_context/AuthContext";
 
 export default function Footer() {
+  const { settings } = useComponentSettings();
+  const { user } = useAuth();
   const currentYear = new Date().getFullYear();
   const router = useRouter();
   const pathname = usePathname();
@@ -25,6 +29,9 @@ export default function Footer() {
       }
     }
   };
+
+  const isSuperAdmin = user?.role === 'super_admin';
+  if (!settings.Footer && !isSuperAdmin) return null;
 
   return (
     <footer className="bg-slate-950 text-slate-300 py-16 border-t border-slate-800">
@@ -54,10 +61,11 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold mb-6">Explore</h4>
             <ul className="space-y-4 text-sm">
-              <li><Link href="/who" onClick={(e) => handleScroll(e, "/who")} className="hover:text-teal-400 transition-colors">Who We Are</Link></li>
-              <li><Link href="/what" onClick={(e) => handleScroll(e, "/what")} className="hover:text-teal-400 transition-colors">What We Offer</Link></li>
-              <li><Link href="/shop" onClick={(e) => handleScroll(e, "/shop")} className="hover:text-teal-400 transition-colors">Shop Tools</Link></li>
-              <li><Link href="/contact" onClick={(e) => handleScroll(e, "/contact")} className="hover:text-teal-400 transition-colors">Contact Us</Link></li>
+              {(settings.WhoWeAre || isSuperAdmin) && <li><Link href="/who" onClick={(e) => handleScroll(e, "/who")} className="hover:text-teal-400 transition-colors">Who We Are</Link></li>}
+              {(settings.WhatWeOffer || isSuperAdmin) && <li><Link href="/what" onClick={(e) => handleScroll(e, "/what")} className="hover:text-teal-400 transition-colors">What We Offer</Link></li>}
+              {(settings.ShopSection || isSuperAdmin) && <li><Link href="/shop" className="hover:text-teal-400 transition-colors">Shop Tools</Link></li>}
+              <li><Link href="/blogs" className="hover:text-teal-400 transition-colors">Blogs</Link></li>
+              {(settings.Contact || isSuperAdmin) && <li><Link href="/contact" onClick={(e) => handleScroll(e, "/contact")} className="hover:text-teal-400 transition-colors">Contact Us</Link></li>}
             </ul>
           </div>
 

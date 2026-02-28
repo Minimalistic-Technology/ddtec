@@ -22,33 +22,25 @@ export default function DashboardStatsCards({ stats }: StatsProps) {
             title: "Total Products",
             value: stats.totalProducts,
             icon: <Package className="size-6 text-blue-600 dark:text-blue-400" />,
-            bg: "bg-blue-50 dark:bg-blue-900/20",
-            trend: "+6.5%",
-            trendUp: true
+            bg: "bg-blue-50 dark:bg-blue-900/20"
         },
         {
             title: "Available Stock",
             value: stats.totalStock,
             icon: <ShoppingBag className="size-6 text-teal-600 dark:text-teal-400" />,
-            bg: "bg-teal-50 dark:bg-teal-900/20",
-            trend: "-2.4%",
-            trendUp: false
+            bg: "bg-teal-50 dark:bg-teal-900/20"
         },
         {
             title: "Low Stock",
             value: stats.lowStock,
             icon: <AlertTriangle className="size-6 text-orange-600 dark:text-orange-400" />,
-            bg: "bg-orange-50 dark:bg-orange-900/20",
-            trend: "+1.5%",
-            trendUp: true
+            bg: "bg-orange-50 dark:bg-orange-900/20"
         },
         {
             title: "Out of Stock",
             value: stats.outOfStock,
             icon: <AlertTriangle className="size-6 text-red-600 dark:text-red-400" />,
-            bg: "bg-red-50 dark:bg-red-900/20",
-            trend: "-0.5%",
-            trendUp: false
+            bg: "bg-red-50 dark:bg-red-900/20"
         }
     ];
 
@@ -70,9 +62,6 @@ export default function DashboardStatsCards({ stats }: StatsProps) {
                     </div>
                     <div className="flex items-end gap-3">
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{card.value}</h2>
-                        <span className={`text-xs font-bold mb-1 ${card.trendUp ? 'text-green-500' : 'text-red-500'}`}>
-                            {card.trend} <span className="text-slate-400 font-normal ml-1">from last week</span>
-                        </span>
                     </div>
                 </motion.div>
             ))}

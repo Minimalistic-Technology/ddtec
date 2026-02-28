@@ -6,23 +6,32 @@ import Link from "next/link";
 import { Mail, Lock, ArrowRight, Loader2, Phone, MessageSquare, User, Shield } from "lucide-react";
 import { useAuth } from "../_context/AuthContext";
 import { useToast } from "../_context/ToastContext";
+import { useComponentSettings } from "../_context/ComponentSettingsContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 
 const LoginForm = () => {
     const { login, checkUser } = useAuth();
+    const { settings } = useComponentSettings();
     const router = useRouter();
     const searchParams = useSearchParams();
     const hint = searchParams.get('hint');
     const { showToast } = useToast();
 
-    // Steps: 'identifier' -> 'password' (for existing) OR 'otp' (for new/signup) -> 'create-password'
-    const [step, setStep] = useState<"identifier" | "password" | "otp" | "create-password">("identifier");
+    // Steps: 'identifier' -> 'password' (for existing) OR 'otp' (for new/signup) -> 'create-password' -> 'maintenance' -> 'admin-bypass'
+    const [step, setStep] = useState<"identifier" | "password" | "otp" | "create-password" | "maintenance" | "admin-bypass">("identifier");
+
+    React.useEffect(() => {
+        if (settings && settings.LoginSignup === false && step === "identifier") {
+            setStep("maintenance");
+        }
+    }, [settings, step]);
 
     const [identifier, setIdentifier] = useState("");
     const [isPhone, setIsPhone] = useState(false);
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState(""); // New state
+    const [maintenanceMsg, setMaintenanceMsg] = useState("");
     const [otp, setOtp] = useState("");
     const [secondaryIdentifier, setSecondaryIdentifier] = useState(""); // For the "other" one
     const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +64,12 @@ const LoginForm = () => {
                 }
             }
         } catch (err: any) {
-            showToast(err.response?.data?.msg || "Failed to check email.", "error");
+            if (err.response?.status === 403 && (err.response?.data?.msg?.includes("disabled") || err.response?.data?.msg?.includes("maintenance"))) {
+                setMaintenanceMsg(err.response?.data?.msg);
+                setStep("maintenance");
+            } else {
+                showToast(err.response?.data?.msg || "Failed to check email.", "error");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -71,9 +85,14 @@ const LoginForm = () => {
             // It does throw.
             showToast("Logged in successfully", "success");
         } catch (err: any) {
-            // Error is already toasted or logged? 
-            // The context throws with message.
-            showToast(err.message || "Invalid credentials", "error");
+            // Check if error is related to component being disabled based on our logic in context
+            // AuthContext may have caught and normalized this error. Let's check response
+            if (err.response?.status === 403 && (err.response?.data?.msg?.includes("disabled") || err.response?.data?.msg?.includes("maintenance"))) {
+                setMaintenanceMsg(err.response?.data?.msg);
+                setStep("maintenance");
+            } else {
+                showToast(err.message || err.response?.data?.msg || "Invalid credentials", "error");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -152,6 +171,8 @@ const LoginForm = () => {
         setIsPhone(phoneRegex.test(val));
     };
 
+    const [showAdminCode, setShowAdminCode] = useState(false);
+
     return (
         <section className="min-h-screen pt-20 flex items-center justify-center bg-slate-50 dark:bg-slate-900 relative overflow-hidden px-4">
             {/* Background Decor */}
@@ -168,13 +189,17 @@ const LoginForm = () => {
                         {step === 'identifier' ? (hint === 'signup' ? "Create Account" : "Welcome") :
                             step === 'password' ? "Welcome Back" :
                                 step === 'create-password' ? "Create Password" :
-                                    "Verify OTP"}
+                                    step === 'maintenance' ? "Under Maintenance" :
+                                        step === 'admin-bypass' ? "Admin Login" :
+                                            "Verify OTP"}
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400">
                         {step === 'identifier' ? "Enter your email or phone to continue" :
                             step === 'password' ? `Sign in as ${identifier}` :
                                 step === 'create-password' ? "Secure your account" :
-                                    `Code sent to ${identifier}`}
+                                    step === 'maintenance' ? "We'll be right back" :
+                                        step === 'admin-bypass' ? "Bypass maintenance mode" :
+                                            `Code sent to ${identifier}`}
                     </p>
                 </div>
 
@@ -392,6 +417,144 @@ const LoginForm = () => {
                                     {isLoading ? <Loader2 className="animate-spin size-5" /> : "Create Account"}
                                 </button>
                             </div>
+                        </motion.form>
+                    )}
+
+                    {step === 'maintenance' && (
+                        <motion.div
+                            key="maintenance-view"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="text-center space-y-6"
+                        >
+                            <div className="mx-auto w-24 h-24 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center text-amber-500 mb-6">
+                                <Shield className="size-12" />
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                                Login Currently Disabled
+                            </h2>
+                            <p className="text-slate-600 dark:text-slate-400 pb-2">
+                                {maintenanceMsg || "Public registration and login are currently undergoing maintenance. Please check back later."}
+                            </p>
+
+                            {/* Contact Support Section */}
+                            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact for more info</p>
+                                <div className="flex flex-col gap-2">
+                                    <a href="mailto:contact@ddtec.com" className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-teal-600 transition-colors mx-auto font-medium">
+                                        <Mail className="size-4" /> contact@ddtec.com
+                                    </a>
+                                    <a href="tel:+919876543210" className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-teal-600 transition-colors mx-auto font-medium">
+                                        <Phone className="size-4" /> +91 98765 43210
+                                    </a>
+                                </div>
+                            </div>
+
+                            {!showAdminCode ? (
+                                <button
+                                    onClick={() => setShowAdminCode(true)}
+                                    className="text-[10px] font-black text-slate-400 uppercase tracking-tighter hover:text-teal-600 transition-colors"
+                                >
+                                    Maintenance? Log in as Admin
+                                </button>
+                            ) : (
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const code = new FormData(e.currentTarget).get("secretCode");
+                                        if (code === "DDTECH") {
+                                            setStep('admin-bypass');
+                                        } else {
+                                            showToast("Invalid admin code", "error");
+                                        }
+                                    }}
+                                    className="relative max-w-xs mx-auto mb-6 space-y-3 animate-in fade-in slide-in-from-top-2"
+                                >
+                                    <input
+                                        autoFocus
+                                        type="password"
+                                        name="secretCode"
+                                        placeholder="Enter Secret Admin Code"
+                                        className="w-full text-center px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all font-mono"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAdminCode(false)}
+                                            className="px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button type="submit" className="flex-1 py-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-bold transition-colors shadow-lg">
+                                            Verify Code
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                            <Link
+                                href="/"
+                                className="inline-flex w-full py-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-colors items-center justify-center"
+                            >
+                                Return to Homepage
+                            </Link>
+
+                            <button
+                                onClick={() => setStep('identifier')}
+                                className="text-sm font-medium text-teal-600 hover:underline mt-4 inline-block opacity-0 pointer-events-none"
+                            >
+                                Try checking another account (Admins)
+                            </button>
+                        </motion.div>
+                    )}
+
+                    {step === 'admin-bypass' && (
+                        <motion.form
+                            key="admin-bypass-form"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            onSubmit={handleLogin}
+                            className="space-y-6"
+                        >
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Identifier</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+                                        <input
+                                            required
+                                            type="text"
+                                            value={identifier}
+                                            onChange={(e) => setIdentifier(e.target.value)}
+                                            className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all font-medium"
+                                            placeholder="admin@ddtec.com"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 size-5" />
+                                        <input
+                                            required
+                                            type="password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all font-medium"
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full py-4 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-amber-500/30 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+                            >
+                                {isLoading ? <Loader2 className="animate-spin size-5" /> : "Login as Admin"}
+                            </button>
                         </motion.form>
                     )}
                 </AnimatePresence>

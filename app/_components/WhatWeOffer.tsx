@@ -34,8 +34,12 @@ const tools = [
 ];
 
 import { useRouter, usePathname } from "next/navigation";
+import { useComponentSettings } from "../_context/ComponentSettingsContext";
+import { useAuth } from "../_context/AuthContext";
 
 const WhatWeOffer: React.FC = () => {
+  const { settings } = useComponentSettings();
+  const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -53,6 +57,9 @@ const WhatWeOffer: React.FC = () => {
       }
     }
   };
+
+  const isSuperAdmin = user?.role === 'super_admin';
+  if (!settings.WhatWeOffer && !isSuperAdmin) return null;
 
   return (
     <section id="what" className="py-12 md:py-24 bg-slate-50 dark:bg-slate-900 overflow-hidden relative">

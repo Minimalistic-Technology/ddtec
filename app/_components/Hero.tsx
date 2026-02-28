@@ -5,10 +5,14 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Sparkles, Hammer, Wrench, Settings, Drill } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import { useComponentSettings } from "@/app/_context/ComponentSettingsContext";
+import { useAuth } from "@/app/_context/AuthContext";
 
 export default function Hero() {
   const router = useRouter();
   const pathname = usePathname();
+  const { settings } = useComponentSettings();
+  const { user } = useAuth();
 
   // Mouse position for parallax
   const x = useMotionValue(0);
@@ -64,6 +68,9 @@ export default function Hero() {
       }
     }
   };
+
+  const isSuperAdmin = user?.role === 'super_admin';
+  if (!settings.Hero && !isSuperAdmin) return null;
 
   return (
     <section
