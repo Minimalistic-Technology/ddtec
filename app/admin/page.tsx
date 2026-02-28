@@ -890,8 +890,12 @@ const AdminDashboard = () => {
                         ].filter(item => {
                             const userRole = user?.role || 'user';
                             if (userRole === 'super_admin') return true;
-                            // customPages is the absolute source of truth if it exists, otherwise fallback to role
-                            const allowedPages = user?.customPages !== undefined ? user?.customPages : (ROLE_PERMISSIONS[userRole] || []);
+
+                            // fallback to role permissions if customPages is not defined or empty
+                            const customPages = user?.customPages || [];
+                            const rolePages = ROLE_PERMISSIONS[userRole] || [];
+
+                            const allowedPages = customPages.length > 0 ? customPages : rolePages;
                             return allowedPages.includes(item.id);
                         }).map((item) => (
                             <li key={item.id}>
@@ -899,11 +903,18 @@ const AdminDashboard = () => {
                                     onClick={() => handleViewChange(item.id as any)}
                                     className={`w-full flex items-center p-2 rounded-lg group ${activeView === item.id ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
                                 >
-                                    <item.icon className={`size-5 transition duration-75 ${activeView === item.id ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white'}`} />
-                                    {!isSidebarCollapsed && <span className="ms-3">{item.label}</span>}
+                                    <item.icon className={`size-5 min-w-5 transition duration-75 ${activeView === item.id ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white'}`} />
+                                    {!isSidebarCollapsed && <span className="ms-3 whitespace-nowrap">{item.label}</span>}
                                 </button>
                             </li>
                         ))}
+                        {isAnyAdmin && (
+                            <li className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                                <div className={`px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest ${isSidebarCollapsed ? 'text-center' : ''}`}>
+                                    {isSidebarCollapsed ? '•' : 'Account'}
+                                </div>
+                            </li>
+                        )}
                     </ul>
                 </div>
             </aside>
