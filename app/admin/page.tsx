@@ -891,11 +891,11 @@ const AdminDashboard = () => {
                             const userRole = user?.role || 'user';
                             if (userRole === 'super_admin') return true;
 
-                            // fallback to role permissions if customPages is not defined or empty
                             const customPages = user?.customPages || [];
                             const rolePages = ROLE_PERMISSIONS[userRole] || [];
 
-                            const allowedPages = customPages.length > 0 ? customPages : rolePages;
+                            // Merge both for robustness, ensuring empty customPages doesn't block role defaults
+                            const allowedPages = Array.from(new Set([...rolePages, ...customPages]));
                             return allowedPages.includes(item.id);
                         }).map((item) => (
                             <li key={item.id}>
@@ -908,13 +908,6 @@ const AdminDashboard = () => {
                                 </button>
                             </li>
                         ))}
-                        {isAnyAdmin && (
-                            <li className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                                <div className={`px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest ${isSidebarCollapsed ? 'text-center' : ''}`}>
-                                    {isSidebarCollapsed ? '•' : 'Account'}
-                                </div>
-                            </li>
-                        )}
                     </ul>
                 </div>
             </aside>
