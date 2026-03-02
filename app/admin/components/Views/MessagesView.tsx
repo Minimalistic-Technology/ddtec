@@ -74,8 +74,8 @@ const MessagesView = ({
     };
     return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <Mail className="size-5 text-teal-600" /> System Messages
                 </h2>
                 <span className="text-xs font-bold px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 rounded-full">
@@ -95,7 +95,30 @@ const MessagesView = ({
                 canExport={user?.role === 'super_admin'}
             />
 
-            <div className="overflow-x-auto">
+            {/* Mobile Card List */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+                {processedMessages.length > 0 ? processedMessages.map((m) => (
+                    <div key={m._id} className="p-4 flex flex-col gap-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-slate-900 dark:text-white text-sm">{m.firstName} {m.lastName}</p>
+                                <p className="text-xs text-slate-500 truncate">{m.email} · {new Date(m.createdAt).toLocaleDateString()}</p>
+                            </div>
+                            {canDelete && (
+                                <button onClick={() => onDeleteMessage(m._id)} className="text-red-500 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all shrink-0">
+                                    <Trash2 className="size-4" />
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{m.message}</p>
+                    </div>
+                )) : (
+                    <div className="p-8 text-center text-slate-400 text-sm">No messages found.</div>
+                )}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-sm uppercase">
                         <tr>
@@ -109,9 +132,7 @@ const MessagesView = ({
                         {processedMessages.length > 0 ? (
                             processedMessages.map((m) => (
                                 <tr key={m._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 group">
-                                    <td className="p-4 whitespace-nowrap text-xs text-slate-500">
-                                        {new Date(m.createdAt).toLocaleString()}
-                                    </td>
+                                    <td className="p-4 whitespace-nowrap text-xs text-slate-500">{new Date(m.createdAt).toLocaleString()}</td>
                                     <td className="p-4 whitespace-nowrap">
                                         <div className="flex flex-col">
                                             <span className="font-bold text-slate-900 dark:text-white">{m.firstName} {m.lastName}</span>
@@ -119,17 +140,11 @@ const MessagesView = ({
                                         </div>
                                     </td>
                                     <td className="p-4 max-w-md">
-                                        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
-                                            {m.message}
-                                        </p>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{m.message}</p>
                                     </td>
                                     <td className="p-4 flex justify-center">
                                         {canDelete && (
-                                            <button
-                                                onClick={() => onDeleteMessage(m._id)}
-                                                className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
-                                                title="Delete Message"
-                                            >
+                                            <button onClick={() => onDeleteMessage(m._id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100 hover:scale-110" title="Delete Message">
                                                 <Trash2 className="size-4" />
                                             </button>
                                         )}
@@ -138,9 +153,7 @@ const MessagesView = ({
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={4} className="p-12 text-center text-slate-500 italic">
-                                    No messages found matching your search.
-                                </td>
+                                <td colSpan={4} className="p-12 text-center text-slate-500 italic">No messages found matching your search.</td>
                             </tr>
                         )}
                     </tbody>

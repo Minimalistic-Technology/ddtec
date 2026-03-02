@@ -32,7 +32,7 @@ const WhoWeAre: React.FC = () => {
   if (!settings.WhoWeAre && !isSuperAdmin) return null;
 
   return (
-    <section id="who" className="py-20 md:py-32 relative overflow-hidden bg-transparent">
+    <section id="who" className="py-16 md:py-32 relative overflow-hidden bg-transparent">
       {/* Seamless Transition Divider - Removed to allow Hero bridge to flow */}
 
       {/* Decorative Organic Glows */}
@@ -53,10 +53,10 @@ const WhoWeAre: React.FC = () => {
               <h2 className="text-sm font-bold tracking-wider text-teal-600 uppercase mb-2">
                 About DDTEC
               </h2>
-              <h3 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-6">
+              <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4 md:mb-6">
                 Empowering Professionals Since 2024
               </h3>
-              <p className="text-lg text-slate-600 dark:text-slate-300 mb-8 leading-relaxed">
+              <p className="text-sm sm:text-base md:text-lg text-slate-600 dark:text-slate-300 mb-8 leading-relaxed">
                 DDTEC is a trusted manufacturer of professional power tools, delivering
                 industrial-grade quality to workshops worldwide. We believe in building
                 tools that work as hard as you do.

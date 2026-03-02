@@ -28,10 +28,10 @@ const ComponentsView = ({
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+            <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
                 <div className="flex items-center gap-2">
                     <Layout className="size-5 text-teal-600" />
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Global Component Settings</h2>
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Global Component Settings</h2>
                 </div>
             </div>
             <div className="p-6 space-y-6">

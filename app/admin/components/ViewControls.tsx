@@ -52,7 +52,7 @@ const ViewControls = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[160px]">
+                <div className="relative w-full sm:w-auto sm:min-w-[160px]">
                     <select
                         value={sortBy}
                         onChange={(e) => onSort(e.target.value)}

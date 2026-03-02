@@ -83,14 +83,14 @@ const BlogsView = ({
     };
     return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <Folder className="size-5 text-teal-600" /> Manage Blogs
                 </h2>
                 {canAdd && (
                     <button
                         onClick={onAddBlog}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-700 transition-all shadow-lg shadow-teal-500/20 hover:scale-[1.02] active:scale-95"
+                        className="flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-700 transition-all shadow-lg shadow-teal-500/20 hover:scale-[1.02] active:scale-95 shrink-0"
                     >
                         <Plus className="size-4" /> Add Blog Post
                     </button>
@@ -108,7 +108,44 @@ const BlogsView = ({
                 onExportPDF={handleExportPDF}
                 canExport={user?.role === 'super_admin'}
             />
-            <div className="overflow-x-auto">
+            {/* Mobile Card List */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+                {processedBlogs.map((b) => (
+                    <div key={b._id} className="p-4 flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                                <p className="font-semibold text-slate-900 dark:text-white text-sm truncate">{b.title}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{b.author} · {new Date(b.createdAt).toLocaleDateString()}</p>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                                {canEdit && (
+                                    <button onClick={() => onEditBlog(b)} className="text-blue-500 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all">
+                                        <Edit className="size-4" />
+                                    </button>
+                                )}
+                                {canDelete && (
+                                    <button onClick={() => onDeleteBlog(b._id)} className="text-red-500 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
+                                        <Trash2 className="size-4" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        {b.tags && b.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                                {b.tags.map((t, idx) => (
+                                    <span key={idx} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-[10px]">{t}</span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+                {processedBlogs.length === 0 && (
+                    <div className="p-8 text-center text-slate-400 text-sm">No blogs found.</div>
+                )}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-sm uppercase">
                         <tr>
@@ -122,44 +159,28 @@ const BlogsView = ({
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                         {processedBlogs.map((b) => (
                             <tr key={b._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                                <td className="p-4 font-medium text-slate-900 dark:text-white max-w-xs truncate">
-                                    {b.title}
-                                </td>
+                                <td className="p-4 font-medium text-slate-900 dark:text-white max-w-xs truncate">{b.title}</td>
                                 <td className="p-4 text-slate-600 dark:text-slate-400">{b.author}</td>
                                 <td className="p-4">
                                     <div className="flex flex-wrap gap-1">
                                         {b.tags?.map((t, idx) => (
-                                            <span key={idx} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-[10px]">
-                                                {t}
-                                            </span>
+                                            <span key={idx} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-[10px]">{t}</span>
                                         ))}
                                     </div>
                                 </td>
-                                <td className="p-4 text-xs text-slate-500">
-                                    {new Date(b.createdAt).toLocaleDateString()}
-                                </td>
+                                <td className="p-4 text-xs text-slate-500">{new Date(b.createdAt).toLocaleDateString()}</td>
                                 <td className="p-4 flex justify-center items-center gap-2">
                                     {canEdit && (
-                                        <button
-                                            onClick={() => onEditBlog(b)}
-                                            className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all hover:scale-110"
-                                            title="Edit Blog"
-                                        >
+                                        <button onClick={() => onEditBlog(b)} className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all hover:scale-110" title="Edit Blog">
                                             <Edit className="size-4" />
                                         </button>
                                     )}
                                     {canDelete && (
-                                        <button
-                                            onClick={() => onDeleteBlog(b._id)}
-                                            className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all hover:scale-110"
-                                            title="Delete Blog"
-                                        >
+                                        <button onClick={() => onDeleteBlog(b._id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all hover:scale-110" title="Delete Blog">
                                             <Trash2 className="size-4" />
                                         </button>
                                     )}
-                                    {!canEdit && !canDelete && (
-                                        <span className="text-slate-400 italic text-sm">View Only</span>
-                                    )}
+                                    {!canEdit && !canDelete && <span className="text-slate-400 italic text-sm">View Only</span>}
                                 </td>
                             </tr>
                         ))}
