@@ -11,7 +11,8 @@ interface ComponentSettings {
     WhoWeAre: boolean;
     FeaturedProducts: boolean;
     Contact: boolean;
-    LoginSignup: boolean;
+    Login: boolean;
+    Signup: boolean;
 }
 
 const defaultSettings: ComponentSettings = {
@@ -22,7 +23,8 @@ const defaultSettings: ComponentSettings = {
     WhoWeAre: true,
     FeaturedProducts: true,
     Contact: true,
-    LoginSignup: true,
+    Login: true,
+    Signup: true,
 };
 
 interface ComponentSettingsContextType {

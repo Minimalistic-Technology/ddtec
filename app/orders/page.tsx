@@ -60,7 +60,7 @@ export default function OrdersPage() {
 
     return (
         <section className="min-h-screen pt-24 pb-12 px-6 bg-slate-50 dark:bg-slate-950">
-            <div className="container mx-auto max-w-4xl">
+            <div className="w-full px-4 md:px-10 lg:px-16">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                     <div>
                         <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-2">My Orders</h1>

@@ -24,6 +24,7 @@ interface BillingViewProps {
     isEditMode?: boolean;
     billId?: string;
     allUsers?: any[];
+    canEditUsers?: boolean;
 }
 
 const BillingView = ({
@@ -41,7 +42,8 @@ const BillingView = ({
     onResetBill,
     isEditMode,
     billId,
-    allUsers = []
+    allUsers = [],
+    canEditUsers = false
 }: BillingViewProps) => {
     const [activeTaxItemIdx, setActiveTaxItemIdx] = useState<number | null>(null);
     const [newTax, setNewTax] = useState({ name: "", rate: "" });
@@ -172,7 +174,7 @@ const BillingView = ({
                                 setCopySuccess(true);
                                 setTimeout(() => setCopySuccess(false), 2000);
                             }}
-                            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-all text-sm"
+                            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-xs shadow-sm active:scale-95"
                         >
                             <Share2 className="size-4" />
                             {copySuccess ? 'Copied!' : 'Public Link'}
@@ -452,15 +454,17 @@ const BillingView = ({
                             </h3>
                             {customerInfo.user ? (
                                 <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={handleSyncCustomer}
-                                        disabled={isUpdatingUser}
-                                        className={`text-[8px] px-2 py-0.5 rounded-full uppercase font-black transition-all flex items-center gap-1 ${updateSuccess ? 'bg-green-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-teal-500 hover:text-white'}`}
-                                        title="Save changes to customer profile"
-                                    >
-                                        {isUpdatingUser ? <Loader2 className="size-2 animate-spin" /> : updateSuccess ? <Check className="size-2" /> : <Save className="size-2" />}
-                                        {updateSuccess ? 'Updated' : 'Update Record'}
-                                    </button>
+                                    {canEditUsers && (
+                                        <button
+                                            onClick={handleSyncCustomer}
+                                            disabled={isUpdatingUser}
+                                            className={`text-[8px] px-2 py-0.5 rounded-full uppercase font-black transition-all flex items-center gap-1 ${updateSuccess ? 'bg-green-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-teal-500 hover:text-white'}`}
+                                            title="Save changes to customer profile"
+                                        >
+                                            {isUpdatingUser ? <Loader2 className="size-2 animate-spin" /> : updateSuccess ? <Check className="size-2" /> : <Save className="size-2" />}
+                                            {updateSuccess ? 'Updated' : 'Update Record'}
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => setCustomerInfo({ ...customerInfo, user: undefined })}
                                         className="text-[8px] bg-teal-600 text-white px-2 py-0.5 rounded-full uppercase font-black hover:bg-red-500 transition-colors flex items-center gap-1"
@@ -625,17 +629,17 @@ const BillingView = ({
                             <button
                                 onClick={onGenerateBill}
                                 disabled={isSubmitting || billingItems.length === 0}
-                                className="w-full py-4 bg-teal-600 hover:bg-teal-500 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-teal-500/20 uppercase tracking-widest"
+                                className="w-full py-4 bg-teal-600 hover:bg-teal-500 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-teal-500/20 uppercase tracking-widest hover:scale-[1.01] active:scale-[0.98]"
                             >
                                 {isSubmitting ? <Loader2 className="animate-spin size-4" /> : <Receipt className="size-4" />}
-                                {isSubmitting ? "Processing..." : isEditMode ? "Save Changes" : "Confirm Order"}
+                                {isSubmitting ? "Processing..." : isEditMode ? "Save Changes" : "Confirm Transaction"}
                             </button>
 
 
                             {!isEditMode && (
                                 <button
                                     onClick={onResetBill}
-                                    className="w-full py-2 text-[8px] font-bold text-white/20 hover:text-red-400 transition-all uppercase tracking-widest"
+                                    className="w-full py-2 text-[8px] font-bold text-slate-400 hover:text-red-500 transition-all uppercase tracking-widest active:scale-95"
                                 >
                                     Clear All
                                 </button>

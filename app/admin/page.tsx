@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     Users, Package, DollarSign, ShoppingBag, Loader2, Trash2, Edit, Plus, X, Tag,
     Image as ImageIcon, Layers, Ticket, Shield, ChevronLeft, ChevronRight, Mail,
-    Truck, Folder, Coins, Download, Share2, Receipt, Layout
+    Truck, Folder, Coins, Download, Share2, Receipt, Layout, Menu
 } from "lucide-react";
 import api from "@/lib/api";
 
@@ -61,6 +61,7 @@ const AdminDashboard = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loadingStats, setLoadingStats] = useState(true);
     const [activeView, setActiveView] = useState<'dashboard' | 'products' | 'users' | 'orders' | 'inventory' | 'messages' | 'coupons' | 'blogs' | 'categories' | 'billing' | 'components' | null>(null);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Data for Manage Views
     const [usersList, setUsersList] = useState<User[]>([]);
@@ -108,7 +109,17 @@ const AdminDashboard = () => {
 
     // Create User State
     const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-    const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", password: "", role: "user", customPages: [] as string[], editPages: [] as string[] });
+    const [newUser, setNewUser] = useState({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        role: "user",
+        customPages: [] as string[],
+        editPages: [] as string[],
+        addPages: [] as string[],
+        deletePages: [] as string[]
+    });
 
     // Edit User State
     const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
@@ -192,6 +203,13 @@ const AdminDashboard = () => {
             }
         }
     }, [user, authLoading, router, activeView]);
+
+    // Listen for mobile sidebar toggle from Navbar hamburger
+    useEffect(() => {
+        const handler = () => setIsMobileMenuOpen(prev => !prev);
+        window.addEventListener('toggle-admin-sidebar', handler);
+        return () => window.removeEventListener('toggle-admin-sidebar', handler);
+    }, []);
 
     useEffect(() => {
         if (user && activeView) {
@@ -477,11 +495,33 @@ const AdminDashboard = () => {
 
 
 
+    const canView = (module: string) => {
+        if (!user) return false;
+        if (user.role === 'super_admin') return true;
+        const allowed = ROLE_PERMISSIONS[user.role] || [];
+        const custom = user.customPages || [];
+        return allowed.includes(module) || custom.includes(module);
+    };
+
+    const canAdd = (module: string) => {
+        if (!user) return false;
+        if (user.role === 'super_admin') return true;
+        const adds = user.addPages || [];
+        return adds.includes(module);
+    };
+
     const canEdit = (module: string) => {
         if (!user) return false;
         if (user.role === 'super_admin') return true;
-        const editPages = user.editPages || [];
-        return editPages.includes(module);
+        const edits = user.editPages || [];
+        return edits.includes(module);
+    };
+
+    const canDelete = (module: string) => {
+        if (!user) return false;
+        if (user.role === 'super_admin') return true;
+        const deletes = user.deletePages || [];
+        return deletes.includes(module);
     };
 
     const toggleUserStatus = async (id: string, currentStatus: boolean) => {
@@ -627,7 +667,11 @@ const AdminDashboard = () => {
             await api.post('/auth/create-user', newUser);
             fetchUsers();
             setIsAddUserModalOpen(false);
-            setNewUser({ firstName: "", lastName: "", email: "", password: "", role: "user", customPages: [] as string[], editPages: [] as string[] });
+            setNewUser({
+                firstName: "", lastName: "", email: "", password: "", role: "user",
+                customPages: [] as string[], editPages: [] as string[],
+                addPages: [] as string[], deletePages: [] as string[]
+            });
             alert("User created successfully");
         } catch (error: any) {
             console.error(error);
@@ -642,7 +686,9 @@ const AdminDashboard = () => {
         // Prioritize user.customPages if it exists, otherwise fallback to ROLE_PERMISSIONS
         const cp = rest.customPages !== undefined ? rest.customPages : (ROLE_PERMISSIONS[rest.role || 'user'] || []);
         const ep = rest.editPages !== undefined ? rest.editPages : [];
-        setEditingUser({ ...rest, customPages: cp, editPages: ep });
+        const ap = rest.addPages !== undefined ? rest.addPages : [];
+        const dp = rest.deletePages !== undefined ? rest.deletePages : [];
+        setEditingUser({ ...rest, customPages: cp, editPages: ep, addPages: ap, deletePages: dp });
         setIsEditUserModalOpen(true);
     };
 
@@ -776,6 +822,10 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleViewOrder = (order: any) => {
+        setViewingOrder(order);
+    };
+
     const handleGenerateBillData = async () => {
         if (billingItems.length === 0) {
             alert("Please add at least one item.");
@@ -864,13 +914,21 @@ const AdminDashboard = () => {
 
     return (
         <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+            {/* Mobile Overlay */}
+            {isMobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className={`fixed top-0 left-0 z-40 h-screen pt-24 transition-all duration-300 bg-white border-r border-slate-200 dark:bg-slate-800 dark:border-slate-700 ${isSidebarCollapsed ? 'w-20' : 'w-64'} -translate-x-full md:translate-x-0`} aria-label="Sidebar">
+            <aside className={`fixed top-0 left-0 z-40 h-screen pt-24 transition-all duration-300 bg-white border-r border-slate-200 dark:bg-slate-800 dark:border-slate-700 ${isSidebarCollapsed ? 'w-20' : 'w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`} aria-label="Sidebar">
                 <button
                     onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                    className="absolute -right-3 top-28 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full p-1 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors z-50 text-slate-500"
+                    className="absolute -right-3 top-28 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full p-1.5 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-all z-50 text-slate-500 hover:scale-110 active:scale-90"
                 >
-                    {isSidebarCollapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+                    {isSidebarCollapsed ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
                 </button>
 
                 <div className="h-full px-3 py-4 overflow-y-auto bg-white dark:bg-slate-800 scrollbar-hide">
@@ -900,11 +958,13 @@ const AdminDashboard = () => {
                         }).map((item) => (
                             <li key={item.id}>
                                 <button
-                                    onClick={() => handleViewChange(item.id as any)}
-                                    className={`w-full flex items-center p-2 rounded-lg group ${activeView === item.id ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                                    onClick={() => { handleViewChange(item.id as any); setIsMobileMenuOpen(false); }}
+                                    className={`w-full flex items-center p-2.5 rounded-xl group transition-all duration-200 ${activeView === item.id
+                                        ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/20 active:scale-95'
+                                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:scale-[1.02] active:scale-95'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
                                 >
-                                    <item.icon className={`size-5 min-w-5 transition duration-75 ${activeView === item.id ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white'}`} />
-                                    {!isSidebarCollapsed && <span className="ms-3 whitespace-nowrap">{item.label}</span>}
+                                    <item.icon className={`size-5 min-w-5 transition-all duration-200 ${activeView === item.id ? 'text-white scale-110' : 'text-slate-500 dark:text-slate-400 group-hover:text-teal-500 dark:group-hover:text-teal-400'}`} />
+                                    {!isSidebarCollapsed && <span className={`ms-3 whitespace-nowrap text-sm font-bold ${activeView === item.id ? 'opacity-100' : 'opacity-80 group-hover:opacity-100'}`}>{item.label}</span>}
                                 </button>
                             </li>
                         ))}
@@ -913,7 +973,7 @@ const AdminDashboard = () => {
             </aside>
 
             <main className={`flex-1 transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} min-h-screen`}>
-                <div className="max-w-7xl mx-auto p-4 md:p-8 pt-24 md:pt-28">
+                <div className="w-full px-4 md:px-10 lg:px-16 pt-24 md:pt-28 pb-12">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={activeView}
@@ -926,35 +986,61 @@ const AdminDashboard = () => {
                             {activeView === 'users' && (
                                 <UsersView
                                     users={usersList}
-                                    onAddUser={() => {
-                                        setNewUser({ firstName: "", lastName: "", email: "", password: "", role: "user", customPages: [], editPages: [] });
-                                        setIsAddUserModalOpen(true);
-                                    }}
+                                    onAddUser={() => setIsAddUserModalOpen(true)}
                                     onEditUser={handleEditUserClick}
                                     onDeleteUser={handleDeleteUser}
                                     onToggleStatus={toggleUserStatus}
-                                    onManageCredit={(user) => {
-                                        setSelectedUserForCredit(user);
+                                    onManageCredit={(u) => {
+                                        setSelectedUserForCredit(u);
                                         setShowCreditModal(true);
                                     }}
                                     user={user}
+                                    canAdd={canAdd('users')}
                                     canEdit={canEdit('users')}
+                                    canDelete={canDelete('users')}
                                 />
                             )}
 
-                            {activeView === 'products' && (
+                            {activeView === "categories" && (
+                                <CategoriesView
+                                    canAdd={canAdd('categories')}
+                                    canEdit={canEdit('categories')}
+                                    canDelete={canDelete('categories')}
+                                    user={user}
+                                />
+                            )}
+                            {activeView === "products" && (
                                 <ProductsView
                                     products={productsList}
                                     onAddProduct={() => setIsAddModalOpen(true)}
                                     onEditProduct={handleEditProductClick}
                                     onDeleteProduct={handleDeleteProduct}
                                     onToggleStatus={toggleProductStatus}
-                                    onViewCoupons={(productName, coupons) => setViewingCoupons({ productName, coupons })}
+                                    onViewCoupons={(name, coupons) => {
+                                        setViewingCoupons({ productName: name, coupons });
+                                    }}
+                                    canAdd={canAdd('products')}
                                     canEdit={canEdit('products')}
+                                    canDelete={canDelete('products')}
+                                    user={user}
                                 />
                             )}
-
-                            {activeView === 'inventory' && (
+                            {activeView === "orders" && (
+                                <OrdersView
+                                    orders={ordersList}
+                                    onEditOrder={(o) => {
+                                        setEditingOrder(o);
+                                        setIsEditOrderModalOpen(true);
+                                    }}
+                                    onViewOrderDetails={handleViewOrder}
+                                    onUpdateStatus={handleUpdateOrderStatus}
+                                    onDeleteOrder={handleDeleteOrder}
+                                    user={user}
+                                    canEdit={canEdit('orders')}
+                                    canDelete={canDelete('orders')}
+                                />
+                            )}
+                            {activeView === "inventory" && (
                                 <InventoryView
                                     products={productsList}
                                     stockStats={stats?.stock}
@@ -962,49 +1048,43 @@ const AdminDashboard = () => {
                                     onAdjustStock={handleAdjustStock}
                                     onToggleStatus={toggleProductStatus}
                                     canEdit={canEdit('inventory')}
-                                />
-                            )}
-
-
-                            {activeView === 'orders' && (
-                                <OrdersView
-                                    orders={ordersList}
-                                    onEditOrder={handleEditOrderClick}
-                                    onViewOrderDetails={setViewingOrder}
-                                    onUpdateStatus={handleUpdateOrderStatus}
-                                    onDeleteOrder={handleDeleteOrder}
                                     user={user}
-                                    canEdit={canEdit('orders')}
                                 />
                             )}
-
-                            {activeView === 'messages' && (
-                                <MessagesView
-                                    messages={messagesList}
-                                    onDeleteMessage={handleDeleteMessage}
-                                />
-                            )}
-
-                            {activeView === 'coupons' && (
-                                <CouponsView
-                                    couponsList={couponsList}
-                                    setIsAddCouponModalOpen={setIsAddCouponModalOpen}
-                                    toggleCouponStatus={toggleCouponStatus}
-                                    handleDeleteCoupon={handleDeleteCoupon}
-                                    canEdit={canEdit('coupons')}
-                                />
-                            )}
-                            {activeView === 'blogs' && (
+                            {activeView === "blogs" && (
                                 <BlogsView
                                     blogs={blogsList}
                                     onAddBlog={() => setIsAddBlogModalOpen(true)}
                                     onEditBlog={handleEditBlogClick}
                                     onDeleteBlog={handleDeleteBlog}
+                                    canAdd={canAdd('blogs')}
                                     canEdit={canEdit('blogs')}
+                                    canDelete={canDelete('blogs')}
+                                    user={user}
+                                />
+                            )}
+                            {activeView === "coupons" && (
+                                <CouponsView
+                                    couponsList={couponsList}
+                                    setIsAddCouponModalOpen={setIsAddCouponModalOpen}
+                                    toggleCouponStatus={toggleCouponStatus}
+                                    handleDeleteCoupon={handleDeleteCoupon}
+                                    canAdd={canAdd('coupons')}
+                                    canEdit={canEdit('coupons')}
+                                    canDelete={canDelete('coupons')}
+                                    user={user}
+                                />
+                            )}
+                            {activeView === 'messages' && (
+                                <MessagesView
+                                    messages={messagesList}
+                                    onDeleteMessage={handleDeleteMessage}
+                                    canDelete={canDelete('messages')}
+                                    user={user}
                                 />
                             )}
                             {activeView === 'components' && (
-                                <ComponentsView />
+                                <ComponentsView canEdit={canEdit('components')} />
                             )}
                             {activeView === 'billing' && (
                                 <BillsView
@@ -1019,6 +1099,10 @@ const AdminDashboard = () => {
                                     }}
                                     handleDeleteBill={handleDeleteBill}
                                     onEditBill={handleEditBillClick}
+                                    canAdd={canAdd('billing')}
+                                    canEdit={canEdit('billing')}
+                                    canDelete={canDelete('billing')}
+                                    user={user}
                                 />
                             )}
                         </motion.div>
@@ -1052,6 +1136,7 @@ const AdminDashboard = () => {
                     isEditMode={!!editingBillId}
                     billId={editingBillId || undefined}
                     allUsers={usersList}
+                    canEditUsers={canEdit('users')}
                 />
             </BillingModal>
             <UserModal

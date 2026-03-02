@@ -1,28 +1,150 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Folder, ChevronRight, X, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Edit, Trash2, Folder, ChevronRight, X, Loader2, Search, LayoutGrid, List, ChevronDown } from 'lucide-react';
 import api from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import ViewControls from "./ViewControls";
+import { exportToCSV, exportToPDF } from "@/lib/exportUtils";
 
 interface Category {
     _id: string;
     name: string;
     slug: string;
     parent?: { _id: string; name: string } | null;
-    description?: string;
     image?: string;
 }
 
-const CategoriesView = () => {
+const CategoryItem = ({
+    category,
+    viewType,
+    hasSubs,
+    isExpanded,
+    onToggle,
+    onEdit,
+    onDelete,
+    isSub,
+    canEdit = false,
+    canDelete = false
+}: {
+    category: Category;
+    viewType: 'grid' | 'list';
+    hasSubs?: boolean;
+    isExpanded?: boolean;
+    onToggle?: () => void;
+    onEdit: (c: Category) => void;
+    onDelete: (id: string) => void;
+    isSub?: boolean;
+    canEdit?: boolean;
+    canDelete?: boolean;
+}) => {
+    if (viewType === 'grid') {
+        return (
+            <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-3.5 hover:shadow-md transition-all group ${isSub ? 'scale-95' : ''}`}>
+                <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2.5">
+                        <div className={`p-1.5 rounded-lg ${isSub ? 'bg-teal-50 dark:bg-teal-900/20' : 'bg-slate-50 dark:bg-slate-900'}`}>
+                            {isSub ? <ChevronRight className="size-3.5 text-teal-600" /> : <Folder className="size-4 text-teal-600" />}
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 transition-colors line-clamp-1">{category.name}</h3>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{isSub ? 'Sub' : 'Root'}</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {canEdit && (
+                            <button onClick={() => onEdit(category)} className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all hover:scale-110">
+                                <Edit className="size-3.5" />
+                            </button>
+                        )}
+                        {canDelete && (
+                            <button onClick={() => onDelete(category._id)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all hover:scale-110">
+                                <Trash2 className="size-3.5" />
+                            </button>
+                        )}
+                        {!canEdit && !canDelete && (
+                            <span className="text-[10px] text-slate-400 italic">View Only</span>
+                        )}
+                    </div>
+                </div>
+
+                {hasSubs && (
+                    <button
+                        onClick={onToggle}
+                        className="w-full flex items-center justify-between px-3 py-1.5 bg-slate-50 dark:bg-slate-900/50 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-teal-600 transition-all border border-transparent hover:border-teal-100 dark:hover:border-teal-900/30"
+                    >
+                        <span>{isExpanded ? 'Hide' : 'View Sub-categories'}</span>
+                        <ChevronDown className={`size-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className={`bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2 hover:shadow-sm transition-all group flex items-center justify-between ${isSub ? 'bg-slate-50/50 dark:bg-slate-900/30 ml-6' : ''}`}>
+            <div className="flex items-center gap-3 flex-1">
+                {hasSubs ? (
+                    <button
+                        onClick={onToggle}
+                        className={`p-1 rounded-lg transition-all ${isExpanded ? 'bg-teal-100 text-teal-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-slate-200'}`}
+                    >
+                        <ChevronRight className={`size-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                    </button>
+                ) : (
+                    <div className="w-6 flex justify-center">
+                        <div className={`size-1 rounded-full ${isSub ? 'bg-teal-400' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                    </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-teal-600 transition-colors uppercase text-xs tracking-tight">{category.name}</h3>
+                    {!isSub && <span className="text-[9px] px-1 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 font-bold uppercase tracking-tighter">Root</span>}
+                </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+                {canEdit && (
+                    <button onClick={() => onEdit(category)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all">
+                        <Edit className="size-3.5" />
+                    </button>
+                )}
+                {canDelete && (
+                    <button onClick={() => onDelete(category._id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all">
+                        <Trash2 className="size-3.5" />
+                    </button>
+                )}
+                {!canEdit && !canDelete && (
+                    <span className="text-[10px] text-slate-400 italic">View Only</span>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const CategoriesView = ({
+    canAdd = false,
+    canEdit = false,
+    canDelete = false,
+    user = null
+}: {
+    canAdd?: boolean;
+    canEdit?: boolean;
+    canDelete?: boolean;
+    user?: any;
+}) => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc'>('name-asc');
+    const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
+    const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+
     const [formData, setFormData] = useState({
         name: '',
         parent: '',
-        description: '',
         image: ''
     });
 
@@ -79,7 +201,6 @@ const CategoriesView = () => {
         setFormData({
             name: category.name,
             parent: category.parent?._id || '',
-            description: category.description || '',
             image: category.image || ''
         });
         setIsModalOpen(true);
@@ -88,55 +209,181 @@ const CategoriesView = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingCategory(null);
-        setFormData({ name: '', parent: '', description: '', image: '' });
+        setFormData({ name: '', parent: '', image: '' });
     };
 
+    const toggleParent = (id: string) => {
+        setExpandedParents(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) newSet.delete(id);
+            else newSet.add(id);
+            return newSet;
+        });
+    };
+
+    const sortedAndFilteredCategories = useMemo(() => {
+        let result = [...categories];
+
+        // Search
+        if (searchQuery) {
+            result = result.filter(c =>
+                c.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+
+        // Sort
+        result.sort((a, b) => {
+            if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
+            if (sortBy === 'name-desc') return b.name.localeCompare(a.name);
+            return 0;
+        });
+
+        return result;
+    }, [categories, searchQuery, sortBy]);
+
+    const rootCategories = useMemo(() => {
+        return sortedAndFilteredCategories.filter(c => !c.parent);
+    }, [sortedAndFilteredCategories]);
+
+    const getSubCategories = (parentId: string) => {
+        return sortedAndFilteredCategories.filter(c => c.parent?._id === parentId);
+    };
+
+    const handleExportCSV = () => {
+        const data = sortedAndFilteredCategories.map(c => ({
+            Name: c.name,
+            Slug: c.slug,
+            Parent: c.parent ? c.parent.name : "None",
+            ID: c._id
+        }));
+        exportToCSV(data, `Categories_${new Date().toISOString().split('T')[0]}`);
+    };
+
+    const handleExportPDF = () => {
+        const headers = ["Category Name", "Slug", "Parent Category"];
+        const data = sortedAndFilteredCategories.map(c => ({
+            name: c.name,
+            slug: c.slug,
+            parent: c.parent ? c.parent.name : "None"
+        }));
+        exportToPDF(data, headers, "Categories_Hierarchy_Report", "Product Categories Management Report");
+    };
+
+    const sortOptions = [
+        { value: "name-asc", label: "Name (A-Z)" },
+        { value: "name-desc", label: "Name (Z-A)" },
+    ];
+
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Folder className="size-6 text-teal-600" />
-                    Categories
-                </h2>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg"
+        <div className="space-y-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Folder className="size-6 text-teal-600" />
+                        Categories Management
+                    </h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Organize and manage your product categories and hierarchy</p>
+                </div>
+                {canAdd && (
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-teal-500/20 hover:scale-[1.02] active:scale-95 font-bold"
+                    >
+                        <Plus className="size-4" /> Add Category
+                    </button>
+                )}
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-6">
+                <ViewControls
+                    title="Category Filters"
+                    searchQuery={searchQuery}
+                    onSearch={setSearchQuery}
+                    sortBy={sortBy}
+                    onSort={(val) => setSortBy(val as any)}
+                    sortOptions={sortOptions}
+                    onExportCSV={handleExportCSV}
+                    onExportPDF={handleExportPDF}
+                    canExport={user?.role === 'super_admin'}
+                    noBorder
                 >
-                    <Plus className="size-4" /> Add Category
-                </button>
+                    <div className="flex items-center bg-slate-100 dark:bg-slate-900/50 rounded-xl p-1 border border-slate-200 dark:border-slate-800">
+                        <button
+                            onClick={() => setViewType('grid')}
+                            className={`p-2 rounded-lg transition-all ${viewType === 'grid' ? 'bg-white dark:bg-slate-700 text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            title="Grid View"
+                        >
+                            <LayoutGrid className="size-4" />
+                        </button>
+                        <button
+                            onClick={() => setViewType('list')}
+                            className={`p-2 rounded-lg transition-all ${viewType === 'list' ? 'bg-white dark:bg-slate-700 text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            title="List View"
+                        >
+                            <List className="size-4" />
+                        </button>
+                    </div>
+                </ViewControls>
             </div>
 
             {loading ? (
                 <div className="flex justify-center py-12"><Loader2 className="animate-spin text-teal-600 size-8" /></div>
+            ) : rootCategories.length === 0 ? (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-12 text-center border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div className="bg-slate-50 dark:bg-slate-900 size-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Folder className="size-8 text-slate-300" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No Categories Found</h3>
+                    <p className="text-slate-500">Try adjusting your search or add a new category.</p>
+                </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {categories.map((category) => (
-                        <div key={category._id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{category.name}</h3>
-                                    {category.parent && (
-                                        <div className="flex items-center text-sm text-slate-500 mt-1">
-                                            <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-xs">
-                                                Sub of: {category.parent.name}
-                                            </span>
-                                        </div>
+                <div className={viewType === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+                    {rootCategories.map((category) => {
+                        const subs = getSubCategories(category._id);
+                        const isExpanded = expandedParents.has(category._id);
+
+                        return (
+                            <div key={category._id} className={`${viewType === 'grid' ? '' : 'w-full'}`}>
+                                <CategoryItem
+                                    category={category}
+                                    viewType={viewType}
+                                    hasSubs={subs.length > 0}
+                                    isExpanded={isExpanded}
+                                    onToggle={() => toggleParent(category._id)}
+                                    onEdit={handleEditClick}
+                                    onDelete={handleDelete}
+                                    canEdit={canEdit}
+                                    canDelete={canDelete}
+                                />
+
+                                <AnimatePresence>
+                                    {isExpanded && subs.length > 0 && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className={`${viewType === 'grid' ? 'mt-2 ml-6 space-y-2 border-l-2 border-teal-100 dark:border-teal-900/30 pl-6' : 'mt-1 ml-10 space-y-1'}`}>
+                                                {subs.map(sub => (
+                                                    <CategoryItem
+                                                        key={sub._id}
+                                                        category={sub}
+                                                        viewType={viewType}
+                                                        isSub
+                                                        onEdit={handleEditClick}
+                                                        onDelete={handleDelete}
+                                                        canEdit={canEdit}
+                                                        canDelete={canDelete}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </motion.div>
                                     )}
-                                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 line-clamp-2">
-                                        {category.description || "No description"}
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleEditClick(category)} className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
-                                        <Edit className="size-4" />
-                                    </button>
-                                    <button onClick={() => handleDelete(category._id)} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                                        <Trash2 className="size-4" />
-                                    </button>
-                                </div>
+                                </AnimatePresence>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
@@ -188,16 +435,6 @@ const CategoriesView = () => {
                                     </select>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
-                                    <textarea
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        className="w-full rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-teal-500 focus:border-teal-500 p-2.5 border"
-                                        rows={3}
-                                        placeholder="Category description..."
-                                    />
-                                </div>
 
                                 <div className="pt-4 flex justify-end gap-3">
                                     <button

@@ -29,6 +29,8 @@ export interface Product {
     couponCode?: string;
     discountPercentage?: number;
     taxes?: Tax[];
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface User {
@@ -44,6 +46,8 @@ export interface User {
     creditBalance?: number;
     customPages?: string[];
     editPages?: string[];
+    addPages?: string[];
+    deletePages?: string[];
     address?: string;
     createdAt?: string;
 }

@@ -52,12 +52,15 @@ const Contact: React.FC = () => {
     if (!settings.Contact && !isSuperAdmin) return null;
 
     return (
-        <section id="contact" className="py-12 md:py-24 relative overflow-hidden bg-white dark:bg-slate-900">
-            {/* Background Decor */}
-            <div className="absolute top-0 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-[100px]" />
-            <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px]" />
+        <section id="contact" className="py-20 md:py-32 relative overflow-hidden bg-white/50 dark:bg-slate-900/10">
+            {/* Seamless Section Bridge */}
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-50" />
 
-            <div className="container mx-auto px-6 relative z-10">
+            {/* Background Decor */}
+            <div className="absolute top-0 right-1/4 w-96 h-96 bg-teal-500/5 dark:bg-teal-500/2 rounded-full blur-[100px]" />
+            <div className="absolute bottom-[-10%] left-1/4 w-[500px] h-[500px] bg-emerald-500/5 dark:bg-emerald-500/2 rounded-full blur-[120px]" />
+
+            <div className="w-full px-4 md:px-10 lg:px-16 relative z-10">
                 <div className="max-w-5xl mx-auto">
                     <div className="text-center mb-16">
                         <motion.h2

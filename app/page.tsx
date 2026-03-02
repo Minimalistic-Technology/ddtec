@@ -7,14 +7,16 @@ import Contact from "./_components/Contact";
 
 export default function HomePage() {
   return (
-    <main>
+    <main className="bg-slate-50 dark:bg-slate-950">
       <Hero />
-      <WhoWeAre />
-      <WhatWeOffer />
-      <Suspense fallback={<div>Loading featured products...</div>}>
-        <FeaturedProducts />
-      </Suspense>
-      <Contact />
+      <div className="relative z-10">
+        <WhoWeAre />
+        <WhatWeOffer />
+        <Suspense fallback={<div>Loading featured products...</div>}>
+          <FeaturedProducts />
+        </Suspense>
+        <Contact />
+      </div>
     </main>
   );
 }

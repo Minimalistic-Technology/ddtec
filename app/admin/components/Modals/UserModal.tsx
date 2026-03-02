@@ -28,32 +28,60 @@ const UserModal = ({
 }: UserModalProps) => {
     const ALL_CUSTOM_PAGES = ['dashboard', 'categories', 'products', 'inventory', 'orders', 'billing', 'coupons', 'users', 'messages', 'blogs', 'components'];
 
-    const handleCustomPageToggle = (page: string, type: 'view' | 'edit') => {
-        if (type === 'view') {
-            const currentPages = newUser.customPages || [];
-            if (currentPages.includes(page)) {
-                // If removing view access, also remove edit access
-                const currentEdits = newUser.editPages || [];
-                setNewUser({
-                    ...newUser,
-                    customPages: currentPages.filter((p: string) => p !== page),
-                    editPages: currentEdits.filter((p: string) => p !== page)
-                });
-            } else {
-                setNewUser({ ...newUser, customPages: [...currentPages, page] });
+    const handleCustomPageToggle = (page: string, type: 'view' | 'add' | 'edit' | 'delete') => {
+        const pages = {
+            view: newUser.customPages || [],
+            add: newUser.addPages || [],
+            edit: newUser.editPages || [],
+            delete: newUser.deletePages || []
+        };
+
+        const fieldMap = {
+            view: 'customPages',
+            add: 'addPages',
+            edit: 'editPages',
+            delete: 'deletePages'
+        };
+
+        const currentList = pages[type];
+        const isSelected = currentList.includes(page);
+
+        let updates: any = {};
+
+        if (isSelected) {
+            // Remove permission
+            updates[fieldMap[type]] = currentList.filter((p: string) => p !== page);
+
+            // If removing 'view', remove ALL other permissions for this page
+            if (type === 'view') {
+                updates.addPages = (newUser.addPages || []).filter((p: string) => p !== page);
+                updates.editPages = (newUser.editPages || []).filter((p: string) => p !== page);
+                updates.deletePages = (newUser.deletePages || []).filter((p: string) => p !== page);
             }
-        } else if (type === 'edit') {
-            const currentEdits = newUser.editPages || [];
-            if (currentEdits.includes(page)) {
-                setNewUser({ ...newUser, editPages: currentEdits.filter((p: string) => p !== page) });
-            } else {
-                // If granting edit access, ensure they have view access too
-                const currentPages = newUser.customPages || [];
-                const newPages = currentPages.includes(page) ? currentPages : [...currentPages, page];
-                setNewUser({ ...newUser, editPages: [...currentEdits, page], customPages: newPages });
+        } else {
+            // Add permission
+            updates[fieldMap[type]] = [...currentList, page];
+
+            // If adding any granular permission, MUST ensure 'view' is also granted
+            if (type !== 'view') {
+                const currentViews = newUser.customPages || [];
+                if (!currentViews.includes(page)) {
+                    updates.customPages = [...currentViews, page];
+                }
             }
         }
+
+        setNewUser({ ...newUser, ...updates });
     };
+
+    const PERMISSION_TYPES: ('view' | 'add' | 'edit' | 'delete')[] = ['view', 'add', 'edit', 'delete'];
+    const PERM_CONFIG = {
+        view: { label: 'View', color: 'peer-checked:bg-teal-500' },
+        add: { label: 'Add', color: 'peer-checked:bg-blue-500' },
+        edit: { label: 'Edit', color: 'peer-checked:bg-amber-500' },
+        delete: { label: 'Delete', color: 'peer-checked:bg-red-500' }
+    };
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -62,7 +90,7 @@ const UserModal = ({
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 dark:border-slate-700"
+                        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 dark:border-slate-700"
                     >
                         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white">
@@ -72,7 +100,7 @@ const UserModal = ({
                                 <X className="size-6" />
                             </button>
                         </div>
-                        <form onSubmit={onSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                        <form onSubmit={onSubmit} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">First Name</label>
@@ -109,36 +137,33 @@ const UserModal = ({
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4 opacity-0" /> {/* Spacer */}
-                                        <input
-                                            required
-                                            type="tel"
-                                            value={newUser.phone || ""}
-                                            onChange={(e) => setNewUser({ ...newUser, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-teal-500"
-                                            placeholder="10-digit mobile number"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            {!editingUser && (
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Initial Password</label>
                                     <input
                                         required
-                                        type="password"
-                                        value={(newUser as any).password || ""}
-                                        onChange={(e) => setNewUser({ ...newUser, ['password']: e.target.value } as any)}
+                                        type="tel"
+                                        value={newUser.phone || ""}
+                                        onChange={(e) => setNewUser({ ...newUser, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                                         className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-teal-500"
-                                        placeholder="••••••••"
+                                        placeholder="10-digit mobile number"
                                     />
-                                    <p className="text-xs text-slate-500 mt-1">Provide an initial password for the staff member.</p>
                                 </div>
-                            )}
+                                {!editingUser && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Initial Password</label>
+                                        <input
+                                            required
+                                            type="password"
+                                            value={(newUser as any).password || ""}
+                                            onChange={(e) => setNewUser({ ...newUser, ['password']: e.target.value } as any)}
+                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-teal-500"
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
                             {newUser.role !== 'user' && (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Staff Role</label>
@@ -165,38 +190,35 @@ const UserModal = ({
                             {currentUser?.role === 'super_admin' && newUser.role !== 'user' && (
                                 <div className="space-y-2">
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Custom Page Access (Overrides Role)</label>
-                                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
-                                        <div className="grid grid-cols-3 gap-2 p-3 bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-500 uppercase">
-                                            <span>Module</span>
-                                            <span className="text-center">View</span>
-                                            <span className="text-center">Edit / Add</span>
+                                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden shadow-inner">
+                                        <div className="grid grid-cols-5 gap-1 p-3 bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-600 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                                            <span className="text-left">Module</span>
+                                            <span>View</span>
+                                            <span>Add</span>
+                                            <span>Edit</span>
+                                            <span>Delete</span>
                                         </div>
-                                        <div className="p-2 space-y-1">
+                                        <div className="p-2 space-y-1 bg-white dark:bg-slate-900/50">
                                             {ALL_CUSTOM_PAGES.map(page => (
-                                                <div key={page} className="grid grid-cols-3 gap-2 p-2 items-center hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">{page}</span>
-                                                    <div className="flex justify-center">
-                                                        <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="sr-only peer"
-                                                                checked={(newUser.customPages || []).includes(page)}
-                                                                onChange={() => handleCustomPageToggle(page, 'view')}
-                                                            />
-                                                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-teal-500"></div>
-                                                        </label>
-                                                    </div>
-                                                    <div className="flex justify-center">
-                                                        <label className="relative inline-flex items-center cursor-pointer">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="sr-only peer"
-                                                                checked={(newUser.editPages || []).includes(page)}
-                                                                onChange={() => handleCustomPageToggle(page, 'edit')}
-                                                            />
-                                                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-amber-500"></div>
-                                                        </label>
-                                                    </div>
+                                                <div key={page} className="grid grid-cols-5 gap-1 p-1.5 items-center hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-lg transition-colors group">
+                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 capitalize truncate" title={page}>{page}</span>
+                                                    {PERMISSION_TYPES.map(type => {
+                                                        const field = type === 'view' ? 'customPages' : `${type}Pages`;
+                                                        const isChecked = (newUser[field] || []).includes(page);
+                                                        return (
+                                                            <div key={type} className="flex justify-center">
+                                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="sr-only peer"
+                                                                        checked={isChecked}
+                                                                        onChange={() => handleCustomPageToggle(page, type)}
+                                                                    />
+                                                                    <div className={`w-8 h-4 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-slate-600 ${PERM_CONFIG[type].color}`}></div>
+                                                                </label>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             ))}
                                         </div>
@@ -207,14 +229,14 @@ const UserModal = ({
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                    className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all border border-slate-200 dark:border-slate-600 active:scale-95"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-lg shadow-teal-500/30 flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-teal-600 text-white hover:bg-teal-700 transition-all shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {isSubmitting ? <Loader2 className="animate-spin size-5" /> : (editingUser ? 'Save Updates' : 'Create Account')}
                                 </button>

@@ -32,11 +32,14 @@ const WhoWeAre: React.FC = () => {
   if (!settings.WhoWeAre && !isSuperAdmin) return null;
 
   return (
-    <section id="who" className="py-12 md:py-24 bg-white dark:bg-slate-900/50 relative overflow-hidden">
-      {/* Decor */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl" />
+    <section id="who" className="py-20 md:py-32 relative overflow-hidden bg-transparent">
+      {/* Seamless Transition Divider - Removed to allow Hero bridge to flow */}
 
-      <div className="container mx-auto px-6">
+      {/* Decorative Organic Glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-500/5 dark:bg-teal-500/3 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[-5%] w-[35%] h-[35%] bg-emerald-500/5 dark:bg-emerald-500/3 rounded-full blur-[130px] pointer-events-none" />
+
+      <div className="w-full px-4 md:px-10 lg:px-16">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
 
           {/* Left: Text Content */}

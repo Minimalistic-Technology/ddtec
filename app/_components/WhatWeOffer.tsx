@@ -62,12 +62,15 @@ const WhatWeOffer: React.FC = () => {
   if (!settings.WhatWeOffer && !isSuperAdmin) return null;
 
   return (
-    <section id="what" className="py-12 md:py-24 bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
-      {/* Background patterns */}
-      <div className="absolute top-1/2 left-0 w-96 h-96 bg-teal-500/5 rounded-full blur-[100px] -translate-y-1/2" />
-      <div className="absolute bottom-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px]" />
+    <section id="what" className="py-20 md:py-32 bg-white/30 dark:bg-slate-900/10 overflow-hidden relative">
+      {/* Organic Flow Divider */}
+      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-50" />
 
-      <div className="container mx-auto px-6 relative z-10">
+      {/* Ambient Pulsing Glows */}
+      <div className="absolute top-1/2 left-[-10%] w-[500px] h-[500px] bg-teal-500/5 dark:bg-teal-500/3 rounded-full blur-[120px] -translate-y-1/2 pointer-events-none animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-emerald-500/5 dark:bg-emerald-500/3 rounded-full blur-[100px] pointer-events-none animate-pulse delay-1000" />
+
+      <div className="w-full px-4 md:px-10 lg:px-16 relative z-10">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
