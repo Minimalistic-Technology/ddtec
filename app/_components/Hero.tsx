@@ -37,7 +37,7 @@ export default function Hero() {
   return (
     <section
       id="home"
-      className="relative flex items-center justify-center overflow-hidden pt-24 pb-20 sm:pt-28 sm:pb-32 md:pt-36 md:pb-36 group/hero"
+      className="relative flex items-center justify-center overflow-hidden pt-38 pb-20 sm:pt-28 sm:pb-32 md:pt-36 md:pb-36 group/hero"
     >
       {/* Background Gradient Overlay - Adjusted for seamless transition */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent to-slate-50 dark:to-slate-950 z-0" />
