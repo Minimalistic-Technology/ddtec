@@ -96,12 +96,12 @@ const ProductsView = ({
     };
     return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Manage Products</h2>
+            <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Manage Products</h2>
                 {canAdd && (
                     <button
                         onClick={onAddProduct}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-700 transition-all shadow-lg shadow-teal-500/20 hover:scale-[1.02] active:scale-95"
+                        className="flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-700 transition-all shadow-lg shadow-teal-500/20 hover:scale-[1.02] active:scale-95 shrink-0"
                     >
                         <Plus className="size-4" /> Add Product
                     </button>
@@ -120,7 +120,49 @@ const ProductsView = ({
                 canExport={user?.role === 'super_admin'}
             />
 
-            <div className="overflow-x-auto">
+            {/* Mobile Card List */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+                {processedProducts.map(p => (
+                    <div key={p._id} className="p-4 flex items-center gap-3">
+                        <div className="size-12 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden flex-shrink-0">
+                            {p.image ? (
+                                <img src={p.image} alt={p.name} className="size-full object-cover" />
+                            ) : (
+                                <div className="size-full flex items-center justify-center text-slate-400"><Tag className="size-5" /></div>
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-slate-900 dark:text-white text-sm truncate">{p.name}</p>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">₹{p.price}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${Number(p.stock) > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{p.stock} in stock</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${p.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{p.isActive ? 'Active' : 'Off'}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                            {canEdit && (
+                                <>
+                                    <ToggleSwitch isOn={p.isActive} onToggle={() => onToggleStatus(p._id, p.isActive)} />
+                                    <button onClick={() => onEditProduct(p)} className="text-blue-500 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all">
+                                        <Edit className="size-4" />
+                                    </button>
+                                </>
+                            )}
+                            {canDelete && (
+                                <button onClick={() => onDeleteProduct(p._id)} className="text-red-500 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
+                                    <Trash2 className="size-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ))}
+                {processedProducts.length === 0 && (
+                    <div className="p-8 text-center text-slate-400 text-sm">No products found.</div>
+                )}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-sm uppercase">
                         <tr>
@@ -141,83 +183,43 @@ const ProductsView = ({
                                             {p.image ? (
                                                 <img src={p.image} alt={p.name} className="size-full object-cover" />
                                             ) : (
-                                                <div className="size-full flex items-center justify-center text-slate-400">
-                                                    <Tag className="size-5" />
-                                                </div>
+                                                <div className="size-full flex items-center justify-center text-slate-400"><Tag className="size-5" /></div>
                                             )}
                                         </div>
                                         <div className="min-w-0 flex flex-col gap-1">
-                                            <h3 className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]" title={p.name}>
-                                                {p.name}
-                                            </h3>
+                                            <h3 className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]" title={p.name}>{p.name}</h3>
                                             <div className="flex items-center gap-1.5">
-                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${p.isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30' : 'bg-red-100 text-red-700 dark:bg-red-900/30'}`}>
-                                                    {p.isActive ? 'Active' : 'Inactive'}
-                                                </span>
-                                                {p.showOnHome && (
-                                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 uppercase tracking-tighter">
-                                                        Home
-                                                    </span>
-                                                )}
+                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${p.isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30' : 'bg-red-100 text-red-700 dark:bg-red-900/30'}`}>{p.isActive ? 'Active' : 'Inactive'}</span>
+                                                {p.showOnHome && <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 uppercase tracking-tighter">Home</span>}
                                             </div>
                                         </div>
                                     </div>
                                 </td>
-                                <td className="p-4 text-slate-600 dark:text-slate-400">
-                                    {(typeof p.category === 'object' && p.category !== null) ? (p.category as any).name : p.category}
-                                </td>
+                                <td className="p-4 text-slate-600 dark:text-slate-400">{(typeof p.category === 'object' && p.category !== null) ? (p.category as any).name : p.category}</td>
                                 <td className="p-4 text-slate-900 dark:text-white font-medium">₹{p.price}</td>
                                 <td className="p-4">
                                     <div className="flex flex-col gap-1">
-                                        {p.couponCode && (
-                                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 text-xs font-mono font-bold">
-                                                <Tag className="size-3" /> {p.couponCode}
-                                            </span>
-                                        )}
+                                        {p.couponCode && <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 text-xs font-mono font-bold"><Tag className="size-3" /> {p.couponCode}</span>}
                                         {(p as any).couponDetails && (p as any).couponDetails.length > 0 && (
-                                            <button
-                                                onClick={() => onViewCoupons(p.name, (p as any).couponDetails)}
-                                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                                            >
-                                                <Ticket className="size-3" />
-                                                {(p as any).couponDetails.length} Linked Coupon{(p as any).couponDetails.length !== 1 ? 's' : ''}
+                                            <button onClick={() => onViewCoupons(p.name, (p as any).couponDetails)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                                <Ticket className="size-3" />{(p as any).couponDetails.length} Linked Coupon{(p as any).couponDetails.length !== 1 ? 's' : ''}
                                             </button>
                                         )}
-                                        {!p.couponCode && (!(p as any).couponDetails || (p as any).couponDetails.length === 0) && (
-                                            <span className="text-xs text-slate-400 italic">None</span>
-                                        )}
+                                        {!p.couponCode && (!(p as any).couponDetails || (p as any).couponDetails.length === 0) && <span className="text-xs text-slate-400 italic">None</span>}
                                     </div>
                                 </td>
-                                <td className="p-4">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${Number(p.stock) > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                        {p.stock}
-                                    </span>
-                                </td>
+                                <td className="p-4"><span className={`px-2 py-1 rounded-full text-xs font-bold ${Number(p.stock) > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{p.stock}</span></td>
                                 <td className="p-4 flex justify-center items-center gap-2">
                                     {canEdit && (
                                         <>
                                             <ToggleSwitch isOn={p.isActive} onToggle={() => onToggleStatus(p._id, p.isActive)} />
-                                            <button
-                                                onClick={() => onEditProduct(p)}
-                                                className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all hover:scale-110"
-                                                title="Edit Product"
-                                            >
-                                                <Edit className="size-4" />
-                                            </button>
+                                            <button onClick={() => onEditProduct(p)} className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all hover:scale-110" title="Edit Product"><Edit className="size-4" /></button>
                                         </>
                                     )}
                                     {canDelete && (
-                                        <button
-                                            onClick={() => onDeleteProduct(p._id)}
-                                            className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all hover:scale-110"
-                                            title="Delete Product"
-                                        >
-                                            <Trash2 className="size-4" />
-                                        </button>
+                                        <button onClick={() => onDeleteProduct(p._id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all hover:scale-110" title="Delete Product"><Trash2 className="size-4" /></button>
                                     )}
-                                    {!canEdit && !canDelete && (
-                                        <span className="text-slate-400 italic text-sm">View Only</span>
-                                    )}
+                                    {!canEdit && !canDelete && <span className="text-slate-400 italic text-sm">View Only</span>}
                                 </td>
                             </tr>
                         ))}

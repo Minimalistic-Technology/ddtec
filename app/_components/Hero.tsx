@@ -37,7 +37,7 @@ export default function Hero() {
   return (
     <section
       id="home"
-      className="relative flex items-center justify-center overflow-hidden pt-32 pb-20 md:pt-40 md:pb-32 group/hero"
+      className="relative flex items-center justify-center overflow-hidden pt-24 pb-20 sm:pt-28 sm:pb-32 md:pt-36 md:pb-36 group/hero"
     >
       {/* Background Gradient Overlay - Adjusted for seamless transition */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-transparent to-slate-50 dark:to-slate-950 z-0" />
@@ -67,21 +67,23 @@ export default function Hero() {
             <span>Industrial Grade Excellence</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-4 md:mb-6 leading-tight text-slate-900 dark:text-white">
+          <h1 className="text-5xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 md:mb-6 leading-tight text-slate-900 dark:text-white">
             Tools Built for <br />
             <span className="text-gradient">True Professionals</span>
           </h1>
 
-          <p className="text-base md:text-xl text-slate-600 dark:text-slate-300 mb-8 md:mb-10 max-w-xl leading-relaxed">
-            Experience precision-crafted power tools designed for performance,
-            unwavering reliability, and lifetime longevity.
-          </p>
+          <div className="flex justify-start sm:justify-center w-full mb-10 md:mb-12">
+            <p className="text-sm sm:text-base md:text-xl text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed text-left sm:text-center">
+              Experience precision-crafted power tools designed for performance,
+              unwavering reliability, and lifetime longevity.
+            </p>
+          </div>
 
-          <div className="flex flex-row items-start sm:items-center justify-start sm:justify-center gap-3 flex-wrap">
+          <div className="flex flex-row items-start sm:items-center justify-start sm:justify-center gap-3 flex-wrap mb-18 md:mb-7">
             <Link
               href="/shop"
               onClick={(e) => handleScroll(e, "/shop")}
-              className="px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-sm font-semibold transition-all shadow-lg hover:shadow-teal-500/30 flex items-center justify-center gap-2 group"
+              className="px-7 py-3 sm:px-8 sm:py-3.5 bg-teal-600 hover:bg-teal-700 text-white rounded-full text-sm font-semibold transition-all shadow-lg hover:shadow-teal-500/30 flex items-center justify-center gap-2 group"
             >
               Shop Now
               <ArrowRight className="size-4 md:size-5 group-hover:translate-x-1 transition-transform" />
@@ -90,7 +92,7 @@ export default function Hero() {
             <Link
               href="/what"
               onClick={(e) => handleScroll(e, "/what")}
-              className="px-6 py-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 rounded-full text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center"
+              className="px-7 py-3 sm:px-8 sm:py-3.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 rounded-full text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center"
             >
               Explore Tools
             </Link>

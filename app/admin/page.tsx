@@ -972,8 +972,8 @@ const AdminDashboard = () => {
                 </div>
             </aside>
 
-            <main className={`flex-1 transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} min-h-screen`}>
-                <div className="w-full px-4 md:px-10 lg:px-16 pt-24 md:pt-28 pb-12">
+            <main className={`flex-1 transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} min-h-screen overflow-x-hidden`}>
+                <div className="w-full min-w-0 px-4 md:px-10 lg:px-16 pt-24 md:pt-28 pb-12">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={activeView}

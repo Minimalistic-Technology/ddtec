@@ -62,7 +62,7 @@ const WhatWeOffer: React.FC = () => {
   if (!settings.WhatWeOffer && !isSuperAdmin) return null;
 
   return (
-    <section id="what" className="py-20 md:py-32 bg-white/30 dark:bg-slate-900/10 overflow-hidden relative">
+    <section id="what" className="py-16 md:py-32 bg-white/30 dark:bg-slate-900/10 overflow-hidden relative">
       {/* Organic Flow Divider */}
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-800 to-transparent opacity-50" />
 
@@ -71,12 +71,12 @@ const WhatWeOffer: React.FC = () => {
       <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-emerald-500/5 dark:bg-emerald-500/3 rounded-full blur-[100px] pointer-events-none animate-pulse delay-1000" />
 
       <div className="w-full px-4 md:px-10 lg:px-16 relative z-10">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        <div className="text-center max-w-2xl mx-auto mb-10 md:mb-16">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4"
+            className="text-2xl sm:text-3xl md:text-5xl font-bold text-slate-900 dark:text-white mb-3 md:mb-4"
           >
             What We Offer
           </motion.h2>
@@ -85,7 +85,7 @@ const WhatWeOffer: React.FC = () => {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="text-slate-600 dark:text-slate-400 text-lg"
+            className="text-slate-600 dark:text-slate-400 text-sm sm:text-base md:text-lg"
           >
             Premium tools engineered for the most demanding tasks.
           </motion.p>
@@ -108,7 +108,7 @@ const WhatWeOffer: React.FC = () => {
                 {tool.icon}
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3 relative z-10">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mb-3 relative z-10">
                 {tool.title}
               </h3>
 

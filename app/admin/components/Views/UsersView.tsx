@@ -100,9 +100,9 @@ const UsersView = ({
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Account Management</h2>
+            <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Account Management</h2>
                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
                         <button
                             onClick={() => setViewMode('customers')}
@@ -161,8 +161,8 @@ const UsersView = ({
                                 {u.isActive ? 'Active' : 'Inactive'}
                             </span>
                         </div>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${u.role === 'super_admin' ? 'bg-purple-100 text-purple-700' : u.role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
                                     {u.role.replace('_', ' ')}
                                 </span>
@@ -172,7 +172,7 @@ const UsersView = ({
                                     </span>
                                 )}
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex flex-wrap items-center gap-1">
                                 {viewMode === 'customers' && canEdit && (
                                     <button onClick={() => onManageCredit(u)} className="text-amber-500 p-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition-all" title="Manage Credit">
                                         <Coins className="size-4" />
