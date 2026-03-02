@@ -46,38 +46,46 @@ export default function ProductDetailsPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [productRes, couponsRes] = await Promise.all([
-                    api.get(`/products/${id}`),
-                    api.get('/coupons')
-                ]);
+                // Fetch product first — this must always succeed for the page to render
+                const productRes = await api.get(`/products/${id}`);
+                const productData = productRes.data;
 
-                setProduct(productRes.data);
-                if (productRes.data.images && productRes.data.images.length > 0) {
-                    setSelectedImage(productRes.data.images[0]);
+                setProduct(productData);
+                if (productData.images && productData.images.length > 0) {
+                    setSelectedImage(productData.images[0]);
                 } else {
-                    setSelectedImage(productRes.data.image);
+                    setSelectedImage(productData.image);
                 }
 
-                // Check if the product's assigned couponCode is active
-                const allCoupons = couponsRes.data;
-                const linkedCoupon = allCoupons.find((c: any) => c.code === productRes.data.couponCode);
-                setIsProductCouponActive(linkedCoupon ? linkedCoupon.isActive : true);
+                // Fetch coupons separately — requires auth, so may fail for guests; that's OK
+                try {
+                    const couponsRes = await api.get('/coupons');
+                    const allCoupons = couponsRes.data;
 
-                // Filter applicable coupons
-                const activeCoupons = allCoupons.filter((c: any) => {
-                    const isExpired = c.expiresAt && new Date(c.expiresAt) < new Date();
-                    return (
-                        c.type === 'product' &&
-                        c.isActive &&
-                        !isExpired &&
-                        c.applicableProducts &&
-                        c.applicableProducts.some((ap: any) => ap._id === id || ap === id)
-                    );
-                });
-                setCoupons(activeCoupons);
+                    // Check if the product's assigned couponCode is active
+                    const linkedCoupon = allCoupons.find((c: any) => c.code === productData.couponCode);
+                    setIsProductCouponActive(linkedCoupon ? linkedCoupon.isActive : true);
+
+                    // Filter applicable coupons for this product
+                    const activeCoupons = allCoupons.filter((c: any) => {
+                        const isExpired = c.expiresAt && new Date(c.expiresAt) < new Date();
+                        return (
+                            c.type === 'product' &&
+                            c.isActive &&
+                            !isExpired &&
+                            c.applicableProducts &&
+                            c.applicableProducts.some((ap: any) => ap._id === id || ap === id)
+                        );
+                    });
+                    setCoupons(activeCoupons);
+                } catch {
+                    // Coupons are not critical — guests won't have access; silently ignore
+                    setIsProductCouponActive(true);
+                    setCoupons([]);
+                }
 
             } catch (error) {
-                console.error("Failed to fetch product or coupons", error);
+                console.error("Failed to fetch product", error);
             } finally {
                 setLoading(false);
             }
