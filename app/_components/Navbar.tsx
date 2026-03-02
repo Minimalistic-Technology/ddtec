@@ -184,7 +184,7 @@ export default function Navbar() {
             : "bg-transparent border-transparent"
         )}
       >
-        <nav className={cn("px-4 md:px-6 h-16 flex items-center justify-between relative", pathname?.startsWith('/admin') ? "w-full" : "container mx-auto")}>
+        <nav className={cn("px-4 md:px-10 lg:px-16 h-16 flex items-center justify-between relative", pathname?.startsWith('/admin') ? "w-full" : "w-full")}>
 
           <Link href="/" className="flex items-center gap-2 group">
             <div className="size-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white font-bold shadow-lg shadow-teal-500/20 group-hover:shadow-teal-500/40 transition-all">
@@ -349,13 +349,15 @@ export default function Navbar() {
                           Account Details
                         </Link>
 
-                        <div className="mt-1 pt-1 border-t border-slate-50 dark:border-slate-800">
+                        <div className="mt-1 pt-1 border-t border-slate-50 dark:border-slate-800 px-1">
                           <button
                             onClick={logout}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all active:scale-95 group/logout"
                           >
-                            <LogOut className="size-4" />
-                            Logout
+                            <div className="size-8 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center group-hover/logout:bg-red-600 group-hover/logout:text-white transition-colors">
+                              <LogOut className="size-4" />
+                            </div>
+                            Logout Session
                           </button>
                         </div>
                       </motion.div>
@@ -378,7 +380,13 @@ export default function Navbar() {
             )}
 
             <button
-              onClick={() => setMenuOpen(!menuOpen)}
+              onClick={() => {
+                if (pathname?.startsWith('/admin')) {
+                  window.dispatchEvent(new CustomEvent('toggle-admin-sidebar'));
+                } else {
+                  setMenuOpen(!menuOpen);
+                }
+              }}
               className={cn(
                 "md:hidden p-2 rounded-full transition-colors",
                 scrolled
@@ -386,7 +394,7 @@ export default function Navbar() {
                   : "text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10"
               )}
             >
-              {menuOpen ? <X className="size-6" /> : <Menu className="size-6" />}
+              {menuOpen && !pathname?.startsWith('/admin') ? <X className="size-6" /> : <Menu className="size-6" />}
             </button>
           </div>
         </nav>

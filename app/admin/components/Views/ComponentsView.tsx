@@ -5,7 +5,13 @@ import { Layout } from "lucide-react";
 import ToggleSwitch from "../ToggleSwitch";
 import { useComponentSettings } from "@/app/_context/ComponentSettingsContext";
 
-const ComponentsView = () => {
+interface ComponentsViewProps {
+    canEdit?: boolean;
+}
+
+const ComponentsView = ({
+    canEdit = true
+}: ComponentsViewProps) => {
     const { settings, toggleComponent } = useComponentSettings();
 
     const componentsList = [
@@ -16,7 +22,8 @@ const ComponentsView = () => {
         { id: "ShopSection", label: "Shop Section", description: "The section displaying shop items." },
         { id: "Contact", label: "Contact Us Section", description: "Contact details and forms." },
         { id: "Footer", label: "Site Footer", description: "The global footer appearing at the bottom of pages." },
-        { id: "LoginSignup", label: "Login/Signup Modal", description: "The authentication component for new and returning users." },
+        { id: "Login", label: "User Login", description: "Allow existing users to log in (Maintenance mode for guests if OFF)." },
+        { id: "Signup", label: "User Registration", description: "Allow new users to create accounts." },
     ] as const;
 
     return (
@@ -37,7 +44,13 @@ const ComponentsView = () => {
                             </div>
                             <ToggleSwitch
                                 isOn={settings[comp.id as keyof typeof settings]}
-                                onToggle={() => toggleComponent(comp.id as keyof typeof settings)}
+                                onToggle={() => {
+                                    if (!canEdit) {
+                                        alert("You do not have permission to change global settings.");
+                                        return;
+                                    }
+                                    toggleComponent(comp.id as keyof typeof settings);
+                                }}
                             />
                         </div>
                     ))}

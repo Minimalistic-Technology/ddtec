@@ -39,9 +39,9 @@ export default function FeaturedProducts() {
         fetchFeaturedProducts();
 
         const handleResize = () => {
-            if (window.innerWidth < 640) setItemsPerSlide(1);
-            else if (window.innerWidth < 1024) setItemsPerSlide(2);
-            else setItemsPerSlide(4);
+            if (window.innerWidth < 640) setItemsPerSlide(3);
+            else if (window.innerWidth < 1024) setItemsPerSlide(4);
+            else setItemsPerSlide(5);
         };
 
         handleResize();
@@ -68,13 +68,16 @@ export default function FeaturedProducts() {
     // The slice approach above works but detailing 'nextSlide' logic to be circular is better.
 
     return (
-        <section className="py-12 md:py-24 bg-white dark:bg-slate-950 relative overflow-hidden">
+        <section className="py-20 md:py-32 bg-slate-50 dark:bg-slate-950 relative overflow-hidden">
+            {/* Seamless Section Bridge */}
+            <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-white/30 to-transparent dark:from-slate-900/10 z-[2]" />
+
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-teal-500/5 rounded-full blur-[100px]" />
-                <div className="absolute bottom-[20%] right-[10%] w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px]" />
+                <div className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] bg-teal-500/5 dark:bg-teal-500/3 rounded-full blur-[120px]" />
+                <div className="absolute bottom-[-10%] right-[20%] w-[600px] h-[600px] bg-blue-500/5 dark:bg-blue-500/3 rounded-full blur-[120px]" />
             </div>
 
-            <div className="max-w-7xl mx-auto px-6 relative z-10">
+            <div className="w-full px-4 md:px-10 lg:px-16 relative z-10">
                 <div className="flex justify-between items-end mb-12">
                     <div>
                         <motion.h2
@@ -103,7 +106,7 @@ export default function FeaturedProducts() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-4 lg:gap-6">
                     <AnimatePresence mode="popLayout">
                         {visibleProducts.map((product) => (
                             <motion.div
@@ -116,7 +119,7 @@ export default function FeaturedProducts() {
                                 className={`group relative bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-teal-500/30 dark:hover:border-teal-500/30 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-teal-500/10 transition-all duration-300 ${Number(product.stock) <= 0 ? 'opacity-75 grayscale' : ''}`}
                             >
                                 <Link href={`/product/${product._id}`} className="block h-full">
-                                    <div className="aspect-[3/4] bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
+                                    <div className="aspect-square bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
                                         {Number(product.stock) <= 0 && (
                                             <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
                                                 <span className="bg-red-600 text-white px-2 py-1 rounded-lg font-black text-[10px] tracking-tighter shadow-lg rotate-[-10deg] border border-white/20 uppercase">
@@ -137,7 +140,7 @@ export default function FeaturedProducts() {
                                         )}
 
                                         {product.discountValue > 0 && (
-                                            <div className="absolute top-4 left-4 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg z-10">
+                                            <div className="absolute top-2 left-2 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg z-10 uppercase tracking-tighter">
                                                 -{product.discountType === 'percentage' ? `${product.discountValue}%` : `₹${product.discountValue}`}
                                             </div>
                                         )}
@@ -149,15 +152,15 @@ export default function FeaturedProducts() {
                                         </div>
                                     </div>
 
-                                    <div className="p-6">
-                                        <div className="text-xs font-bold text-teal-600 dark:text-teal-400 mb-2 uppercase tracking-wider">
+                                    <div className="p-3">
+                                        <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400 mb-1 uppercase tracking-wider">
                                             {typeof product.category === 'object' ? product.category.name : 'Product'}
                                         </div>
-                                        <h3 className="font-bold text-slate-900 dark:text-white mb-2 line-clamp-1 group-hover:text-teal-600 transition-colors">
+                                        <h3 className="font-bold text-slate-900 dark:text-white mb-1 text-xs sm:text-sm line-clamp-1 group-hover:text-teal-600 transition-colors">
                                             {product.name}
                                         </h3>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xl font-bold text-slate-900 dark:text-white">
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white">
                                                 ₹{product.price}
                                             </span>
                                         </div>

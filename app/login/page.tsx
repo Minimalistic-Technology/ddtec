@@ -22,10 +22,22 @@ const LoginForm = () => {
     const [step, setStep] = useState<"identifier" | "password" | "otp" | "create-password" | "maintenance" | "admin-bypass">("identifier");
 
     React.useEffect(() => {
-        if (settings && settings.LoginSignup === false && step === "identifier") {
+        // If they specifically want to signup but it's disabled
+        if (settings && settings.Signup === false && hint === "signup" && step === "identifier") {
             setStep("maintenance");
+            setMaintenanceMsg("Public registration is currently disabled. Please contact support.");
         }
-    }, [settings, step]);
+        // If BOTH are disabled, it's total maintenance
+        else if (settings && settings.Login === false && settings.Signup === false && step === "identifier") {
+            setStep("maintenance");
+            setMaintenanceMsg("Public registration and login are currently undergoing maintenance.");
+        }
+        // If only Login is disabled, we show maintenance but allow a bypass for existing users inside the view
+        else if (settings && settings.Login === false && step === "identifier") {
+            setStep("maintenance");
+            setMaintenanceMsg("Login is currently restricted to existing users only.");
+        }
+    }, [settings, step, hint]);
 
     const [identifier, setIdentifier] = useState("");
     const [isPhone, setIsPhone] = useState(false);
@@ -52,6 +64,10 @@ const LoginForm = () => {
                 setStep("password");
             } else {
                 // NOT ON WEBSITE -> Try to send OTP for Signup
+                if (settings && settings.Signup === false) {
+                    showToast("New registrations are currently disabled. Please contact support or use an existing account.", "error");
+                    return;
+                }
                 // This call will fail if the email is "fake" (disposable domains)
                 try {
                     await api.post('/auth/send-otp', { identifier: trimmedIdentifier });
@@ -493,9 +509,18 @@ const LoginForm = () => {
                                 </form>
                             )}
 
+                            {settings?.Login === false && (
+                                <button
+                                    onClick={() => setStep('identifier')}
+                                    className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-lg shadow-teal-500/20 transition-all flex items-center justify-center gap-2"
+                                >
+                                    Already have an account? Sign In
+                                </button>
+                            )}
+
                             <Link
                                 href="/"
-                                className="inline-flex w-full py-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-colors items-center justify-center"
+                                className={`inline-flex w-full py-4 ${settings?.Login === false ? 'bg-slate-100 dark:bg-slate-800' : 'bg-teal-600 text-white'} hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold transition-colors items-center justify-center`}
                             >
                                 Return to Homepage
                             </Link>

@@ -254,7 +254,7 @@ export default function ShopSection() {
                                 <div className="animate-spin text-teal-600"><Loader2 className="size-10" /></div>
                             </div>
                         ) : filteredProducts.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-4 lg:gap-6">
                                 {filteredProducts.map((product) => (
                                     <ProductCard
                                         key={product._id}
